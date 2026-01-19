@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { api } from '../lib/api';
 import { 
   Camera, 
   Home, 
@@ -78,35 +79,23 @@ export default function CreateSplit() {
     return true;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!canProceed()) return;
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!canProceed()) return;
 
-    setLoading(true);
-    try {
-      const response = await fetch('/api/splits', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          totalCost: Number(formData.totalCost),
-          slots: Number(formData.slots),
-          organizerId: company.id
-        })
-      });
-
-      if (!response.ok) throw new Error('Failed to create split');
-      
-      const split = await response.json();
-      navigate(`/splits/${split.id}`);
-    } catch (error) {
-      console.error('Error creating split:', error);
-      // For demo, navigate to splits page
-      navigate('/splits');
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    const split = await api.createSplit({
+      ...formData,
+      totalCost: Number(formData.totalCost),
+      slots: Number(formData.slots),
+      organizerId: company.id
+    });
+    navigate(`/splits/${split.id}`);
+  } catch (error) {
+    console.error('Error creating split:', error);
+    navigate('/splits');
+  }
+};
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in">
