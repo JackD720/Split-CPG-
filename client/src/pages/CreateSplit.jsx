@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/api';
@@ -63,15 +63,7 @@ export default function CreateSplit() {
     vendorDetails: ''
   });
 
-  // Redirect after success screen
-  useEffect(() => {
-    if (success && createdSplitId) {
-      const timer = setTimeout(() => {
-        navigate(`/splits/${createdSplitId}`);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [success, createdSplitId, navigate]);
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -165,11 +157,6 @@ export default function CreateSplit() {
               </div>
             )}
           </div>
-          
-          {/* Redirect Notice */}
-          <p className="text-sm text-charcoal-500 mb-4">
-            Redirecting to your split in a moment...
-          </p>
           
           {/* Manual Navigation */}
           <button
