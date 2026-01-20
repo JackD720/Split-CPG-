@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/api';
@@ -12,7 +12,8 @@ import {
   Users,
   Calendar,
   MapPin,
-  Info
+  Info,
+  CheckCircle
 } from 'lucide-react';
 
 const splitTypes = [
@@ -47,6 +48,8 @@ export default function CreateSplit() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [createdSplitId, setCreatedSplitId] = useState(null);
   const [formData, setFormData] = useState({
     type: '',
     title: '',
@@ -59,6 +62,16 @@ export default function CreateSplit() {
     vendorName: '',
     vendorDetails: ''
   });
+
+  // Redirect after success screen
+  useEffect(() => {
+    if (success && createdSplitId) {
+      const timer = setTimeout(() => {
+        navigate(`/splits/${createdSplitId}`);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success, createdSplitId, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -79,23 +92,97 @@ export default function CreateSplit() {
     return true;
   };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (!canProceed()) return;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!canProceed()) return;
 
-  try {
-    const split = await api.createSplit({
-      ...formData,
-      totalCost: Number(formData.totalCost),
-      slots: Number(formData.slots),
-      organizerId: company.id
-    });
-    navigate(`/splits/${split.id}`);
-  } catch (error) {
-    console.error('Error creating split:', error);
-    navigate('/splits');
+    setLoading(true);
+    try {
+      const split = await api.createSplit({
+        ...formData,
+        totalCost: Number(formData.totalCost),
+        slots: Number(formData.slots),
+        organizerId: company.id
+      });
+      setCreatedSplitId(split.id);
+      setSuccess(true);
+    } catch (error) {
+      console.error('Error creating split:', error);
+      alert('Failed to create split. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  // Success Screen
+  if (success) {
+    const selectedType = splitTypes.find(t => t.value === formData.type);
+    const TypeIcon = selectedType?.icon || Camera;
+    
+    return (
+      <div className="max-w-2xl mx-auto animate-fade-in">
+        <div className="card-elevated p-8 text-center">
+          {/* Success Icon */}
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="w-10 h-10 text-green-600" />
+          </div>
+          
+          <h1 className="font-display text-2xl text-charcoal-900 mb-2">
+            Split Created!
+          </h1>
+          <p className="text-charcoal-600 mb-8">
+            Your split is now live and ready for participants to join.
+          </p>
+          
+          {/* Summary Card */}
+          <div className="bg-charcoal-50 rounded-2xl p-6 text-left mb-8">
+            <div className="flex items-center gap-4 mb-6">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${selectedType?.iconColor || 'bg-charcoal-100 text-charcoal-600'}`}>
+                <TypeIcon className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="font-display text-lg text-charcoal-900">{formData.title}</h2>
+                <p className="text-charcoal-500 capitalize">{formData.type} Split</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white rounded-xl p-4 text-center">
+                <DollarSign className="w-5 h-5 text-charcoal-400 mx-auto mb-1" />
+                <p className="text-lg font-semibold text-charcoal-800">${costPerSlot}</p>
+                <p className="text-xs text-charcoal-500">per slot</p>
+              </div>
+              <div className="bg-white rounded-xl p-4 text-center">
+                <Users className="w-5 h-5 text-charcoal-400 mx-auto mb-1" />
+                <p className="text-lg font-semibold text-charcoal-800">1/{formData.slots}</p>
+                <p className="text-xs text-charcoal-500">spots filled</p>
+              </div>
+            </div>
+            
+            {formData.location && (
+              <div className="flex items-center gap-2 mt-4 pt-4 border-t border-charcoal-200 text-charcoal-600">
+                <MapPin className="w-4 h-4 text-charcoal-400" />
+                {formData.location}
+              </div>
+            )}
+          </div>
+          
+          {/* Redirect Notice */}
+          <p className="text-sm text-charcoal-500 mb-4">
+            Redirecting to your split in a moment...
+          </p>
+          
+          {/* Manual Navigation */}
+          <button
+            onClick={() => navigate(`/splits/${createdSplitId}`)}
+            className="btn-primary"
+          >
+            View Split Now
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
   }
-};
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in">
