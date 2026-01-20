@@ -84,8 +84,7 @@ export default function CreateSplit() {
     return true;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (!canProceed()) return;
 
     setLoading(true);
@@ -196,7 +195,6 @@ export default function CreateSplit() {
       </div>
 
       <form 
-        onSubmit={handleSubmit}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
             e.preventDefault();
@@ -463,7 +461,8 @@ export default function CreateSplit() {
             </button>
           ) : (
             <button
-              type="submit"
+              type="button"
+              onClick={handleSubmit}
               disabled={loading || !canProceed()}
               className="btn-primary"
             >
