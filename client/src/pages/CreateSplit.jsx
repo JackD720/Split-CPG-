@@ -195,7 +195,14 @@ export default function CreateSplit() {
         />
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form 
+        onSubmit={handleSubmit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+          }
+        }}
+      >
         {/* Step 1: Type Selection */}
         {step === 1 && (
           <div className="space-y-4">
