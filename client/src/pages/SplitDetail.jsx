@@ -105,6 +105,21 @@ export default function SplitDetail() {
     }
   };
 
+  const handleCancel = async () => {
+    if (!window.confirm('Are you sure you want to cancel this split?')) return;
+    
+    try {
+      setActionLoading(true);
+      await api.cancelSplit(id);
+      navigate('/splits');
+    } catch (err) {
+      console.error('Error canceling split:', err);
+      alert('Failed to cancel split');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -319,9 +334,10 @@ export default function SplitDetail() {
                   {split.status === 'full' ? 'Pay Now' : 'Payment opens when full'}
                 </button>
                 <button
-                  onClick={handleLeave}
-                  disabled={actionLoading}
-                  className="btn-ghost w-full text-red-600 hover:bg-red-50"
+                 
+                onClick={handleCancel}
+                disabled={actionLoading}
+                className="btn-secondary w-full text-red-600 border-red-200 hover:bg-red-50"
                 >
                   Leave Split
                 </button>

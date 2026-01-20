@@ -44,6 +44,15 @@ export const api = {
     return res.json();
   },
 
+  cancelSplit: async (id) => {
+    const res = await fetch(API_URL + '/api/splits/' + id + '/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error('Failed to cancel split');
+    return res.json();
+  },
+
   getCompanies: async () => {
     const res = await fetch(API_URL + '/api/companies');
     if (!res.ok) throw new Error('Failed to fetch companies');
