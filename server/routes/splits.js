@@ -311,4 +311,22 @@ router.post('/:id/cancel', async (req, res) => {
   }
 });
 
+// Delete a split
+router.delete('/:id', async (req, res) => {
+  try {
+    const splitRef = db.collection('splits').doc(req.params.id);
+    const doc = await splitRef.get();
+    
+    if (!doc.exists) {
+      return res.status(404).json({ error: 'Split not found' });
+    }
+    
+    await splitRef.delete();
+    res.json({ success: true, message: 'Split deleted' });
+  } catch (error) {
+    console.error('Error deleting split:', error);
+    res.status(500).json({ error: 'Failed to delete split' });
+  }
+});
+
 module.exports = router;

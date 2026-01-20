@@ -332,11 +332,11 @@ export default function SplitDetail() {
             {/* Action Buttons */}
             {canJoin && (
               <button 
-              onClick={handleDelete}
-              disabled={actionLoading}
-              className="btn-secondary w-full text-red-600 border-red-200 hover:bg-red-50"
+                onClick={handleJoin}
+                disabled={actionLoading}
+                className="btn-primary w-full"
               >
-               Delete Split
+                Join this Split
               </button>
             )}
 
@@ -349,10 +349,9 @@ export default function SplitDetail() {
                   {split.status === 'full' ? 'Pay Now' : 'Payment opens when full'}
                 </button>
                 <button
-                 
-                onClick={handleCancel}
-                disabled={actionLoading}
-                className="btn-secondary w-full text-red-600 border-red-200 hover:bg-red-50"
+                  onClick={handleLeave}
+                  disabled={actionLoading}
+                  className="btn-secondary w-full text-red-600 border-red-200 hover:bg-red-50"
                 >
                   Leave Split
                 </button>
@@ -365,8 +364,12 @@ export default function SplitDetail() {
                   <p className="text-sm text-split-700">You're the organizer</p>
                 </div>
                 {split.status === 'open' && (
-                  <button className="btn-secondary w-full text-red-600 border-red-200 hover:bg-red-50">
-                    Cancel Split
+                  <button 
+                    onClick={handleDelete}
+                    disabled={actionLoading}
+                    className="btn-secondary w-full text-red-600 border-red-200 hover:bg-red-50"
+                  >
+                    Delete Split
                   </button>
                 )}
               </div>
