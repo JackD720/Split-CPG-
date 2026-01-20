@@ -105,6 +105,21 @@ export default function SplitDetail() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this split? This cannot be undone.')) return;
+    
+    try {
+      setActionLoading(true);
+      await api.deleteSplit(id);
+      navigate('/splits');
+    } catch (err) {
+      console.error('Error deleting split:', err);
+      alert('Failed to delete split');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleCancel = async () => {
     if (!window.confirm('Are you sure you want to cancel this split?')) return;
     
@@ -316,12 +331,12 @@ export default function SplitDetail() {
 
             {/* Action Buttons */}
             {canJoin && (
-              <button
-                onClick={handleJoin}
-                disabled={actionLoading}
-                className="btn-primary w-full mb-3"
+              <button 
+              onClick={handleDelete}
+              disabled={actionLoading}
+              className="btn-secondary w-full text-red-600 border-red-200 hover:bg-red-50"
               >
-                {actionLoading ? 'Joining...' : 'Join this Split'}
+               Delete Split
               </button>
             )}
 

@@ -53,6 +53,14 @@ export const api = {
     return res.json();
   },
 
+  deleteSplit: async (id) => {
+    const res = await fetch(API_URL + '/api/splits/' + id, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Failed to delete split');
+    return res.json();
+  },
+
   getCompanies: async () => {
     const res = await fetch(API_URL + '/api/companies');
     if (!res.ok) throw new Error('Failed to fetch companies');
