@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Scissors, ArrowRight, Building2, Upload } from 'lucide-react';
+
+const API_URL = 'https://split-backend-720273557833.us-central1.run.app';
 
 const categories = [
   { value: 'beverage', label: 'Beverage' },
@@ -17,7 +19,7 @@ const categories = [
 ];
 
 export default function Onboarding() {
-  const { user, setCurrentCompany } = useAuth();
+  const { user, company, hasCompany, setCurrentCompany } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -27,6 +29,13 @@ export default function Onboarding() {
     location: '',
     website: ''
   });
+
+  // Redirect if user already has a company
+  useEffect(() => {
+    if (hasCompany && company) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [hasCompany, company, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -39,7 +48,8 @@ export default function Onboarding() {
 
     setLoading(true);
     try {
-      const response = await fetch('/api/companies', {
+      // Use the correct backend API URL
+      const response = await fetch(`${API_URL}/api/companies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -51,23 +61,31 @@ export default function Onboarding() {
       if (!response.ok) throw new Error('Failed to create company');
       
       const company = await response.json();
-      setCurrentCompany(company);
+      await setCurrentCompany(company);
       navigate('/dashboard');
     } catch (error) {
       console.error('Error creating company:', error);
-      // For demo, create locally
-      const demoCompany = {
-        id: `company_${Date.now()}`,
+      // Save directly to Firestore as fallback
+      const companyData = {
         ...formData,
         userId: user.id,
         createdAt: new Date().toISOString()
       };
-      setCurrentCompany(demoCompany);
+      await setCurrentCompany(companyData);
       navigate('/dashboard');
     } finally {
       setLoading(false);
     }
   };
+
+  // Don't render form if user already has company (will redirect)
+  if (hasCompany && company) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-charcoal-500">Redirecting...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-cream-100 flex items-center justify-center p-6">
