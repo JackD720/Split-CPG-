@@ -5,6 +5,15 @@ const { db } = require('../config/firebase');
 // Split types
 const SPLIT_TYPES = ['content', 'housing', 'popup', 'other'];
 
+// Helper to normalize company data (ensure logoUrl is present)
+const normalizeCompany = (data) => {
+  if (!data) return null;
+  return {
+    ...data,
+    logoUrl: data.logoUrl || data.logo || null
+  };
+};
+
 // Get all splits (with filters)
 router.get('/', async (req, res) => {
   try {
@@ -62,7 +71,7 @@ router.get('/:id', async (req, res) => {
     if (splitData.organizerId) {
       const orgDoc = await db.collection('companies').doc(splitData.organizerId).get();
       if (orgDoc.exists) {
-        splitData.organizer = { id: orgDoc.id, ...orgDoc.data() };
+        splitData.organizer = normalizeCompany({ id: orgDoc.id, ...orgDoc.data() });
       }
     }
     
@@ -78,7 +87,7 @@ router.get('/:id', async (req, res) => {
       const companyMap = {};
       companyDocs.forEach(doc => {
         if (doc.exists) {
-          companyMap[doc.id] = { id: doc.id, ...doc.data() };
+          companyMap[doc.id] = normalizeCompany({ id: doc.id, ...doc.data() });
         }
       });
       

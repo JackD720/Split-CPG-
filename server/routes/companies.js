@@ -13,10 +13,15 @@ router.get('/', async (req, res) => {
     }
     
     const snapshot = await query.limit(50).get();
-    const companies = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const companies = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        // Normalize logo field - return as logoUrl for frontend consistency
+        logoUrl: data.logoUrl || data.logo || null
+      };
+    });
     
     // Client-side search filter if provided
     let filtered = companies;
@@ -42,7 +47,13 @@ router.get('/:id', async (req, res) => {
     if (!doc.exists) {
       return res.status(404).json({ error: 'Company not found' });
     }
-    res.json({ id: doc.id, ...doc.data() });
+    const data = doc.data();
+    res.json({ 
+      id: doc.id, 
+      ...data,
+      // Normalize logo field
+      logoUrl: data.logoUrl || data.logo || null
+    });
   } catch (error) {
     console.error('Error fetching company:', error);
     res.status(500).json({ error: 'Failed to fetch company' });
@@ -52,15 +63,19 @@ router.get('/:id', async (req, res) => {
 // Create company profile
 router.post('/', async (req, res) => {
   try {
-    const { name, logo, category, description, location, website, userId } = req.body;
+    const { name, logo, logoUrl, category, description, location, website, userId } = req.body;
     
     if (!name || !userId) {
       return res.status(400).json({ error: 'Name and userId are required' });
     }
     
+    // Accept both logo and logoUrl, prefer logoUrl
+    const finalLogoUrl = logoUrl || logo || null;
+    
     const companyData = {
       name,
-      logo: logo || null,
+      logoUrl: finalLogoUrl,
+      logo: finalLogoUrl, // Keep for backwards compatibility
       category: category || 'other',
       description: description || '',
       location: location || '',
@@ -72,8 +87,9 @@ router.post('/', async (req, res) => {
       updatedAt: new Date().toISOString()
     };
     
-    const docRef = await db.collection('companies').add(companyData);
-    res.status(201).json({ id: docRef.id, ...companyData });
+    // Use userId as document ID so we can easily look up by user
+    await db.collection('companies').doc(userId).set(companyData);
+    res.status(201).json({ id: userId, ...companyData });
   } catch (error) {
     console.error('Error creating company:', error);
     res.status(500).json({ error: 'Failed to create company' });
@@ -83,11 +99,14 @@ router.post('/', async (req, res) => {
 // Update company
 router.put('/:id', async (req, res) => {
   try {
-    const { name, logo, category, description, location, website } = req.body;
+    const { name, logo, logoUrl, category, description, location, website } = req.body;
+    
+    // Accept both logo and logoUrl
+    const finalLogoUrl = logoUrl !== undefined ? logoUrl : logo;
     
     const updateData = {
       ...(name && { name }),
-      ...(logo !== undefined && { logo }),
+      ...(finalLogoUrl !== undefined && { logoUrl: finalLogoUrl, logo: finalLogoUrl }),
       ...(category && { category }),
       ...(description !== undefined && { description }),
       ...(location !== undefined && { location }),
@@ -96,7 +115,10 @@ router.put('/:id', async (req, res) => {
     };
     
     await db.collection('companies').doc(req.params.id).update(updateData);
-    res.json({ id: req.params.id, ...updateData });
+    
+    // Fetch and return updated document
+    const doc = await db.collection('companies').doc(req.params.id).get();
+    res.json({ id: req.params.id, ...doc.data() });
   } catch (error) {
     console.error('Error updating company:', error);
     res.status(500).json({ error: 'Failed to update company' });
