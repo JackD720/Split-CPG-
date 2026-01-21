@@ -1,12 +1,17 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { storage } from '../config/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import StripeConnect from '../components/StripeConnect';
 import { 
   Building2, 
   CreditCard, 
   User,
   Check,
-  Save
+  Save,
+  Upload,
+  X,
+  Camera
 } from 'lucide-react';
 
 const categories = [
@@ -27,6 +32,15 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState('company');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const fileInputRef = useRef(null);
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  
+  // Get current logo URL
+  const currentLogo = company?.logoUrl || company?.logo;
+  
   const [formData, setFormData] = useState({
     name: company?.name || '',
     category: company?.category || '',
@@ -41,13 +55,123 @@ export default function Settings() {
     setSaved(false);
   };
 
+  // Handle file selection
+  const handleFileSelect = (file) => {
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (PNG, JPG, etc.)');
+      return;
+    }
+    
+    // Validate file size (2MB max)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('File size must be less than 2MB');
+      return;
+    }
+    
+    setLogoFile(file);
+    setSaved(false);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setLogoPreview(e.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle click on upload area
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Handle file input change
+  const handleFileInputChange = (e) => {
+    const file = e.target.files?.[0];
+    handleFileSelect(file);
+  };
+
+  // Handle drag events
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  // Handle drop
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    const file = e.dataTransfer.files?.[0];
+    handleFileSelect(file);
+  };
+
+  // Remove selected/current logo
+  const handleRemoveLogo = () => {
+    setLogoFile(null);
+    setLogoPreview(null);
+    setSaved(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Upload logo to Firebase Storage
+  const uploadLogo = async () => {
+    if (!logoFile || !user) return null;
+    
+    setUploadingLogo(true);
+    try {
+      const fileExtension = logoFile.name.split('.').pop();
+      const fileName = `logos/${user.id}/logo_${Date.now()}.${fileExtension}`;
+      const storageRef = ref(storage, fileName);
+      
+      await uploadBytes(storageRef, logoFile);
+      const downloadUrl = await getDownloadURL(storageRef);
+      console.log('Logo uploaded successfully:', downloadUrl);
+      return downloadUrl;
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      return null;
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
     
     try {
-      await updateCompany(formData);
+      let logoUrl = currentLogo;
+      
+      // Upload new logo if selected
+      if (logoFile) {
+        const uploadedUrl = await uploadLogo();
+        if (uploadedUrl) {
+          logoUrl = uploadedUrl;
+        }
+      } else if (logoPreview === null && currentLogo) {
+        // Logo was removed
+        logoUrl = null;
+      }
+      
+      await updateCompany({
+        ...formData,
+        logoUrl,
+        logo: logoUrl // Keep both for compatibility
+      });
+      
       setSaved(true);
+      setLogoFile(null); // Clear file after successful upload
     } catch (error) {
       console.error('Error saving:', error);
     } finally {
@@ -60,6 +184,9 @@ export default function Settings() {
     { id: 'payments', label: 'Payments', icon: CreditCard },
     { id: 'account', label: 'Account', icon: User }
   ];
+
+  // Determine what logo to show (new preview takes priority)
+  const displayLogo = logoPreview || (logoPreview !== null ? currentLogo : null);
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
@@ -89,6 +216,79 @@ export default function Settings() {
           <h2 className="font-display text-xl text-charcoal-900 mb-6">Company Profile</h2>
           
           <form onSubmit={handleSave} className="space-y-5">
+            {/* Logo Upload Section */}
+            <div>
+              <label className="label">Company Logo</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileInputChange}
+                className="hidden"
+              />
+              
+              <div className="flex items-start gap-6">
+                {/* Current/Preview Logo */}
+                <div className="flex-shrink-0">
+                  {displayLogo || currentLogo ? (
+                    <div className="relative group">
+                      <img 
+                        src={displayLogo || currentLogo} 
+                        alt="Company logo" 
+                        className="w-24 h-24 object-cover rounded-xl border-2 border-charcoal-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveLogo}
+                        className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                      {logoFile && (
+                        <div className="absolute bottom-0 left-0 right-0 bg-split-500 text-white text-xs text-center py-1 rounded-b-xl">
+                          New
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-24 h-24 bg-charcoal-100 rounded-xl flex items-center justify-center border-2 border-dashed border-charcoal-300">
+                      <Camera className="w-8 h-8 text-charcoal-400" />
+                    </div>
+                  )}
+                </div>
+                
+                {/* Upload Area */}
+                <div className="flex-1">
+                  <div 
+                    onClick={handleUploadClick}
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                    className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors cursor-pointer
+                      ${dragActive 
+                        ? 'border-split-500 bg-split-50' 
+                        : 'border-charcoal-200 hover:border-split-400'
+                      }`}
+                  >
+                    <Upload className={`w-6 h-6 mx-auto mb-2 ${dragActive ? 'text-split-500' : 'text-charcoal-400'}`} />
+                    <p className={`text-sm ${dragActive ? 'text-split-600' : 'text-charcoal-600'}`}>
+                      {currentLogo || logoFile ? 'Change logo' : 'Upload logo'}
+                    </p>
+                    <p className="text-xs text-charcoal-400 mt-1">
+                      PNG, JPG up to 2MB
+                    </p>
+                  </div>
+                  
+                  {logoFile && (
+                    <p className="text-xs text-split-600 mt-2">
+                      New file selected: {logoFile.name}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className="label">Company Name</label>
               <input
@@ -155,11 +355,11 @@ export default function Settings() {
             <div className="flex items-center gap-4 pt-4">
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || uploadingLogo}
                 className="btn-primary"
               >
-                {saving ? (
-                  'Saving...'
+                {saving || uploadingLogo ? (
+                  uploadingLogo ? 'Uploading logo...' : 'Saving...'
                 ) : saved ? (
                   <>
                     <Check className="w-4 h-4" />
