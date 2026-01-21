@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Scissors, ArrowRight, Building2, Upload } from 'lucide-react';
+import { storage } from '../config/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Scissors, ArrowRight, Building2, Upload, X, Image } from 'lucide-react';
 
 const API_URL = 'https://split-backend-720273557833.us-central1.run.app';
 
@@ -21,13 +23,19 @@ const categories = [
 export default function Onboarding() {
   const { user, company, hasCompany, setCurrentCompany } = useAuth();
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
   const [loading, setLoading] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [logoFile, setLogoFile] = useState(null);
+  const [dragActive, setDragActive] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     category: '',
     description: '',
     location: '',
-    website: ''
+    website: '',
+    logoUrl: ''
   });
 
   // Redirect if user already has a company
@@ -42,18 +50,123 @@ export default function Onboarding() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Handle file selection
+  const handleFileSelect = (file) => {
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (PNG, JPG, etc.)');
+      return;
+    }
+    
+    // Validate file size (2MB max)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('File size must be less than 2MB');
+      return;
+    }
+    
+    setLogoFile(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setLogoPreview(e.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle click on upload area
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Handle file input change
+  const handleFileInputChange = (e) => {
+    const file = e.target.files?.[0];
+    handleFileSelect(file);
+  };
+
+  // Handle drag events
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  // Handle drop
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    const file = e.dataTransfer.files?.[0];
+    handleFileSelect(file);
+  };
+
+  // Remove selected logo
+  const handleRemoveLogo = () => {
+    setLogoFile(null);
+    setLogoPreview(null);
+    setFormData(prev => ({ ...prev, logoUrl: '' }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Upload logo to Firebase Storage
+  const uploadLogo = async () => {
+    if (!logoFile || !user) return null;
+    
+    setUploadingLogo(true);
+    try {
+      // Create a unique filename
+      const fileExtension = logoFile.name.split('.').pop();
+      const fileName = `logos/${user.id}/logo_${Date.now()}.${fileExtension}`;
+      const storageRef = ref(storage, fileName);
+      
+      // Upload the file
+      await uploadBytes(storageRef, logoFile);
+      
+      // Get the download URL
+      const downloadUrl = await getDownloadURL(storageRef);
+      console.log('Logo uploaded successfully:', downloadUrl);
+      return downloadUrl;
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      // Don't block form submission if logo upload fails
+      return null;
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.category) return;
 
     setLoading(true);
     try {
+      // Upload logo first if selected
+      let logoUrl = formData.logoUrl;
+      if (logoFile) {
+        const uploadedUrl = await uploadLogo();
+        if (uploadedUrl) {
+          logoUrl = uploadedUrl;
+        }
+      }
+
       // Use the correct backend API URL
       const response = await fetch(`${API_URL}/api/companies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          logoUrl,
           userId: user.id
         })
       });
@@ -66,8 +179,17 @@ export default function Onboarding() {
     } catch (error) {
       console.error('Error creating company:', error);
       // Save directly to Firestore as fallback
+      let logoUrl = formData.logoUrl;
+      if (logoFile && !logoUrl) {
+        const uploadedUrl = await uploadLogo();
+        if (uploadedUrl) {
+          logoUrl = uploadedUrl;
+        }
+      }
+      
       const companyData = {
         ...formData,
+        logoUrl,
         userId: user.id,
         createdAt: new Date().toISOString()
       };
@@ -189,28 +311,82 @@ export default function Onboarding() {
               />
             </div>
 
-            {/* Logo Upload Placeholder */}
+            {/* Logo Upload */}
             <div>
               <label className="label">Logo (optional)</label>
-              <div className="border-2 border-dashed border-charcoal-200 rounded-xl p-6 text-center hover:border-split-400 transition-colors cursor-pointer">
-                <Upload className="w-8 h-8 text-charcoal-400 mx-auto mb-2" />
-                <p className="text-sm text-charcoal-600">
-                  Click to upload or drag and drop
-                </p>
-                <p className="text-xs text-charcoal-400 mt-1">
-                  PNG, JPG up to 2MB
-                </p>
-              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileInputChange}
+                className="hidden"
+              />
+              
+              {logoPreview ? (
+                // Show preview when logo is selected
+                <div className="relative border-2 border-split-400 rounded-xl p-4 bg-split-50">
+                  <div className="flex items-center gap-4">
+                    <img 
+                      src={logoPreview} 
+                      alt="Logo preview" 
+                      className="w-16 h-16 object-contain rounded-lg bg-white"
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-charcoal-800 truncate">
+                        {logoFile?.name}
+                      </p>
+                      <p className="text-xs text-charcoal-500">
+                        {logoFile && (logoFile.size / 1024).toFixed(1)} KB
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveLogo}
+                      className="p-2 text-charcoal-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // Show upload area when no logo selected
+                <div 
+                  onClick={handleUploadClick}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer
+                    ${dragActive 
+                      ? 'border-split-500 bg-split-50' 
+                      : 'border-charcoal-200 hover:border-split-400'
+                    }`}
+                >
+                  <Upload className={`w-8 h-8 mx-auto mb-2 ${dragActive ? 'text-split-500' : 'text-charcoal-400'}`} />
+                  <p className={`text-sm ${dragActive ? 'text-split-600' : 'text-charcoal-600'}`}>
+                    Click to upload or drag and drop
+                  </p>
+                  <p className="text-xs text-charcoal-400 mt-1">
+                    PNG, JPG up to 2MB
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Submit */}
             <button
               type="submit"
-              disabled={loading || !formData.name || !formData.category}
+              disabled={loading || uploadingLogo || !formData.name || !formData.category}
               className="btn-primary w-full mt-6"
             >
-              {loading ? 'Creating...' : 'Complete Setup'}
-              {!loading && <ArrowRight className="w-4 h-4" />}
+              {loading || uploadingLogo ? (
+                uploadingLogo ? 'Uploading logo...' : 'Creating...'
+              ) : (
+                <>
+                  Complete Setup
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </form>
         </div>
