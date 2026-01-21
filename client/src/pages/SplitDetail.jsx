@@ -29,6 +29,34 @@ const typeColors = {
   popup: 'bg-green-100 text-green-600'
 };
 
+// Helper component for company avatar with logo support
+function CompanyAvatar({ company, size = 'md' }) {
+  const logo = company?.logoUrl || company?.logo;
+  const sizeClasses = {
+    sm: 'w-8 h-8 text-sm',
+    md: 'w-10 h-10 text-lg',
+    lg: 'w-12 h-12 text-lg'
+  };
+  
+  if (logo) {
+    return (
+      <img 
+        src={logo} 
+        alt={company?.name || 'Company'}
+        className={`${sizeClasses[size]} rounded-lg object-cover`}
+      />
+    );
+  }
+  
+  return (
+    <div className={`${sizeClasses[size]} bg-split-100 rounded-lg flex items-center justify-center`}>
+      <span className="text-split-600 font-semibold">
+        {company?.name?.charAt(0) || '?'}
+      </span>
+    </div>
+  );
+}
+
 export default function SplitDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -71,7 +99,12 @@ export default function SplitDetail() {
           ...(prev.participants || []),
           {
             companyId: company.id,
-            company: { id: company.id, name: company.name, category: company.category },
+            company: { 
+              id: company.id, 
+              name: company.name, 
+              category: company.category,
+              logoUrl: company.logoUrl || company.logo
+            },
             joinedAt: new Date().toISOString(),
             paid: false
           }
@@ -272,11 +305,7 @@ export default function SplitDetail() {
                   className="flex items-center justify-between p-3 bg-charcoal-50 rounded-xl"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-split-100 rounded-lg flex items-center justify-center">
-                      <span className="text-split-600 font-semibold text-lg">
-                        {participant.company?.name?.charAt(0) || '?'}
-                      </span>
-                    </div>
+                    <CompanyAvatar company={participant.company} size="md" />
                     <div>
                       <p className="font-medium text-charcoal-800">
                         {participant.company?.name}
@@ -399,11 +428,7 @@ export default function SplitDetail() {
           <div className="card p-6">
             <h3 className="font-display text-sm text-charcoal-500 mb-4">Organized by</h3>
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-split-100 rounded-xl flex items-center justify-center">
-                <span className="text-split-600 font-semibold text-lg">
-                  {split.organizer?.name?.charAt(0) || '?'}
-                </span>
-              </div>
+              <CompanyAvatar company={split.organizer} size="lg" />
               <div>
                 <p className="font-medium text-charcoal-800">{split.organizer?.name}</p>
                 <p className="text-sm text-charcoal-500 capitalize">{split.organizer?.category}</p>

@@ -31,6 +31,9 @@ export default function Layout() {
     navigate('/');
   };
 
+  // Get logo URL - check both logoUrl and logo for backwards compatibility
+  const companyLogo = company?.logoUrl || company?.logo;
+
   return (
     <div className="min-h-screen bg-cream-100">
       {/* Desktop Sidebar */}
@@ -51,9 +54,9 @@ export default function Layout() {
             <div className="px-4 mb-6">
               <div className="p-3 bg-cream-100 rounded-xl">
                 <div className="flex items-center gap-3">
-                  {company.logo ? (
+                  {companyLogo ? (
                     <img 
-                      src={company.logo} 
+                      src={companyLogo} 
                       alt={company.name}
                       className="w-10 h-10 rounded-lg object-cover"
                     />
@@ -143,6 +146,35 @@ export default function Layout() {
         {mobileMenuOpen && (
           <div className="absolute top-16 inset-x-0 bg-white border-b border-charcoal-100 shadow-lg animate-slide-up">
             <nav className="p-4 space-y-1">
+              {/* Company Badge for Mobile */}
+              {company && (
+                <div className="p-3 bg-cream-100 rounded-xl mb-4">
+                  <div className="flex items-center gap-3">
+                    {companyLogo ? (
+                      <img 
+                        src={companyLogo} 
+                        alt={company.name}
+                        className="w-10 h-10 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 bg-split-100 rounded-lg flex items-center justify-center">
+                        <span className="text-split-600 font-semibold">
+                          {company.name?.charAt(0) || '?'}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-charcoal-900 truncate">
+                        {company.name}
+                      </p>
+                      <p className="text-xs text-charcoal-500 capitalize">
+                        {company.category}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {navItems.map(({ to, icon: Icon, label }) => (
                 <NavLink
                   key={to}
