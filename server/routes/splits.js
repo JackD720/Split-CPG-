@@ -57,6 +57,31 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Helper to find company by ID or userId field
+const findCompany = async (companyId) => {
+  if (!companyId) return null;
+  
+  // First try by document ID
+  let companyDoc = await db.collection('companies').doc(companyId).get();
+  
+  if (companyDoc.exists) {
+    return normalizeCompany({ id: companyDoc.id, ...companyDoc.data() });
+  }
+  
+  // Fallback: search by userId field (for companies created with random doc IDs)
+  const querySnapshot = await db.collection('companies')
+    .where('userId', '==', companyId)
+    .limit(1)
+    .get();
+  
+  if (!querySnapshot.empty) {
+    const doc = querySnapshot.docs[0];
+    return normalizeCompany({ id: doc.id, ...doc.data() });
+  }
+  
+  return null;
+};
+
 // Get single split with full details
 router.get('/:id', async (req, res) => {
   try {
@@ -69,10 +94,7 @@ router.get('/:id', async (req, res) => {
     
     // Fetch organizer details
     if (splitData.organizerId) {
-      const orgDoc = await db.collection('companies').doc(splitData.organizerId).get();
-      if (orgDoc.exists) {
-        splitData.organizer = normalizeCompany({ id: orgDoc.id, ...orgDoc.data() });
-      }
+      splitData.organizer = await findCompany(splitData.organizerId);
     }
     
     // Fetch participant company details
@@ -80,14 +102,15 @@ router.get('/:id', async (req, res) => {
       const participantIds = splitData.participants.map(p => p.companyId);
       const uniqueIds = [...new Set(participantIds)];
       
-      const companyDocs = await Promise.all(
-        uniqueIds.map(id => db.collection('companies').doc(id).get())
+      // Fetch all companies in parallel
+      const companies = await Promise.all(
+        uniqueIds.map(id => findCompany(id))
       );
       
       const companyMap = {};
-      companyDocs.forEach(doc => {
-        if (doc.exists) {
-          companyMap[doc.id] = normalizeCompany({ id: doc.id, ...doc.data() });
+      companies.forEach((company, index) => {
+        if (company) {
+          companyMap[uniqueIds[index]] = company;
         }
       });
       
