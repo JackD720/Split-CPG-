@@ -61,8 +61,10 @@ export const api = {
     return res.json();
   },
 
-  getCompanies: async () => {
-    const res = await fetch(API_URL + '/api/companies');
+  getCompanies: async (category) => {
+    const params = new URLSearchParams();
+    if (category) params.append('category', category);
+    const res = await fetch(API_URL + '/api/companies?' + params);
     if (!res.ok) throw new Error('Failed to fetch companies');
     return res.json();
   },

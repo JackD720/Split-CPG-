@@ -1,88 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { 
   Search, 
   MapPin, 
   ExternalLink,
-  Filter,
-  Building2
+  Building2,
+  Loader2
 } from 'lucide-react';
-
-// Mock companies data
-const mockCompanies = [
-  {
-    id: '1',
-    name: 'BYTE\'M Brownies',
-    category: 'snacks',
-    description: 'Better-for-you brownie bites made with clean ingredients',
-    location: 'New York, NY',
-    website: 'https://bytembrownies.com',
-    splitsCompleted: 3
-  },
-  {
-    id: '2',
-    name: 'Healthy Snacks Co',
-    category: 'snacks',
-    description: 'Plant-based snacks for active lifestyles',
-    location: 'Los Angeles, CA',
-    website: 'https://healthysnacks.co',
-    splitsCompleted: 5
-  },
-  {
-    id: '3',
-    name: 'Refresh Beverages',
-    category: 'beverage',
-    description: 'Functional beverages with adaptogens and nootropics',
-    location: 'Austin, TX',
-    website: 'https://refreshbev.com',
-    splitsCompleted: 2
-  },
-  {
-    id: '4',
-    name: 'Glow Beauty',
-    category: 'beauty',
-    description: 'Clean beauty products for everyday radiance',
-    location: 'Miami, FL',
-    website: 'https://glowbeauty.com',
-    splitsCompleted: 4
-  },
-  {
-    id: '5',
-    name: 'Pure Wellness',
-    category: 'wellness',
-    description: 'Supplements and wellness products backed by science',
-    location: 'San Francisco, CA',
-    website: 'https://purewellness.com',
-    splitsCompleted: 1
-  },
-  {
-    id: '6',
-    name: 'Happy Paws',
-    category: 'pet',
-    description: 'Premium pet food and treats made with love',
-    location: 'Denver, CO',
-    website: 'https://happypaws.com',
-    splitsCompleted: 2
-  },
-  {
-    id: '7',
-    name: 'Little Ones',
-    category: 'baby',
-    description: 'Organic baby food and snacks for growing minds',
-    location: 'Portland, OR',
-    website: 'https://littleones.com',
-    splitsCompleted: 3
-  },
-  {
-    id: '8',
-    name: 'Artisan Foods',
-    category: 'snacks',
-    description: 'Small-batch gourmet snacks with global flavors',
-    location: 'Chicago, IL',
-    website: 'https://artisanfoods.com',
-    splitsCompleted: 6
-  }
-];
+import { api } from '../lib/api';
 
 const categories = [
   { value: 'all', label: 'All Categories' },
@@ -93,7 +17,9 @@ const categories = [
   { value: 'pet', label: 'Pet' },
   { value: 'baby', label: 'Baby & Kids' },
   { value: 'household', label: 'Household' },
-  { value: 'supplements', label: 'Supplements' }
+  { value: 'supplements', label: 'Supplements' },
+  { value: 'frozen', label: 'Frozen' },
+  { value: 'other', label: 'Other' }
 ];
 
 const categoryColors = {
@@ -105,23 +31,84 @@ const categoryColors = {
   baby: 'bg-purple-100 text-purple-700',
   household: 'bg-slate-100 text-slate-700',
   supplements: 'bg-teal-100 text-teal-700',
+  frozen: 'bg-cyan-100 text-cyan-700',
   other: 'bg-gray-100 text-gray-700'
 };
 
+// Helper component for company avatar with logo support
+function CompanyAvatar({ company, size = 'md' }) {
+  const logo = company?.logoUrl || company?.logo;
+  const sizeClasses = {
+    sm: 'w-10 h-10 text-base',
+    md: 'w-14 h-14 text-xl',
+    lg: 'w-16 h-16 text-2xl'
+  };
+  
+  if (logo) {
+    return (
+      <img 
+        src={logo} 
+        alt={company?.name || 'Company'}
+        className={`${sizeClasses[size]} rounded-xl object-cover`}
+      />
+    );
+  }
+  
+  return (
+    <div className={`${sizeClasses[size]} bg-split-100 rounded-xl flex items-center justify-center`}>
+      <span className="text-split-600 font-bold">
+        {company?.name?.charAt(0) || '?'}
+      </span>
+    </div>
+  );
+}
+
+// Helper to ensure website URL has protocol
+function formatWebsiteUrl(url) {
+  if (!url) return null;
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  return `https://${url}`;
+}
+
 export default function Companies() {
-  const [companies, setCompanies] = useState(mockCompanies);
+  const [companies, setCompanies] = useState([]);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Filter companies
+  // Fetch companies from API
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await api.getCompanies(
+          categoryFilter !== 'all' ? categoryFilter : undefined
+        );
+        setCompanies(data);
+      } catch (err) {
+        console.error('Error fetching companies:', err);
+        setError('Failed to load companies');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchCompanies();
+  }, [categoryFilter]);
+
+  // Filter companies by search (client-side)
   const filteredCompanies = companies.filter(company => {
-    const matchesSearch = !search || 
-      company.name.toLowerCase().includes(search.toLowerCase()) ||
-      company.description?.toLowerCase().includes(search.toLowerCase()) ||
-      company.location?.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || company.category === categoryFilter;
-    return matchesSearch && matchesCategory;
+    if (!search) return true;
+    const searchLower = search.toLowerCase();
+    return (
+      company.name?.toLowerCase().includes(searchLower) ||
+      company.description?.toLowerCase().includes(searchLower) ||
+      company.location?.toLowerCase().includes(searchLower)
+    );
   });
 
   return (
@@ -162,74 +149,93 @@ export default function Companies() {
         </div>
       </div>
 
-      {/* Results Count */}
-      <p className="text-sm text-charcoal-500">
-        {filteredCompanies.length} compan{filteredCompanies.length !== 1 ? 'ies' : 'y'} found
-      </p>
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 text-split-500 animate-spin" />
+        </div>
+      )}
 
-      {/* Companies Grid */}
-      {filteredCompanies.length > 0 ? (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCompanies.map((company, index) => (
-            <div
-              key={company.id}
-              className="card p-6 hover:-translate-y-1 transition-all duration-300 animate-fade-in"
-              style={{ animationDelay: `${index * 0.05}s` }}
-            >
-              {/* Header */}
-              <div className="flex items-start gap-4 mb-4">
-                <div className="w-14 h-14 bg-split-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <span className="text-split-600 font-bold text-xl">
-                    {company.name.charAt(0)}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-charcoal-900 truncate">{company.name}</h3>
-                  <span className={`badge ${categoryColors[company.category] || categoryColors.other} mt-1`}>
-                    {company.category}
-                  </span>
-                </div>
-              </div>
-              
-              {/* Description */}
-              <p className="text-sm text-charcoal-600 mb-4 line-clamp-2">
-                {company.description}
-              </p>
-              
-              {/* Location */}
-              {company.location && (
-                <div className="flex items-center gap-1.5 text-sm text-charcoal-500 mb-4">
-                  <MapPin className="w-4 h-4" />
-                  {company.location}
-                </div>
-              )}
-              
-              {/* Footer */}
-              <div className="flex items-center justify-between pt-4 border-t border-charcoal-100">
-                <span className="text-xs text-charcoal-500">
-                  {company.splitsCompleted} split{company.splitsCompleted !== 1 ? 's' : ''} completed
-                </span>
-                
-                {company.website && (
-                  <a
-                    href={company.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-split-600 hover:text-split-700 text-sm flex items-center gap-1"
-                  >
-                    Website
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
+      {/* Error State */}
+      {error && !loading && (
         <div className="card p-12 text-center">
-          <Building2 className="w-12 h-12 text-charcoal-300 mx-auto mb-4" />
-          <p className="text-charcoal-600">No companies found matching your search</p>
+          <p className="text-red-500">{error}</p>
         </div>
+      )}
+
+      {/* Results */}
+      {!loading && !error && (
+        <>
+          {/* Results Count */}
+          <p className="text-sm text-charcoal-500">
+            {filteredCompanies.length} compan{filteredCompanies.length !== 1 ? 'ies' : 'y'} found
+          </p>
+
+          {/* Companies Grid */}
+          {filteredCompanies.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredCompanies.map((company, index) => (
+                <div
+                  key={company.id}
+                  className="card p-6 hover:-translate-y-1 transition-all duration-300 animate-fade-in"
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                >
+                  {/* Header */}
+                  <div className="flex items-start gap-4 mb-4">
+                    <CompanyAvatar company={company} size="md" />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-charcoal-900 truncate">{company.name}</h3>
+                      <span className={`badge ${categoryColors[company.category] || categoryColors.other} mt-1`}>
+                        {company.category}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Description */}
+                  {company.description && (
+                    <p className="text-sm text-charcoal-600 mb-4 line-clamp-2">
+                      {company.description}
+                    </p>
+                  )}
+                  
+                  {/* Location */}
+                  {company.location && (
+                    <div className="flex items-center gap-1.5 text-sm text-charcoal-500 mb-4">
+                      <MapPin className="w-4 h-4" />
+                      {company.location}
+                    </div>
+                  )}
+                  
+                  {/* Footer */}
+                  <div className="flex items-center justify-between pt-4 border-t border-charcoal-100">
+                    <span className="text-xs text-charcoal-500">
+                      {company.splitsCompleted || 0} split{company.splitsCompleted !== 1 ? 's' : ''} completed
+                    </span>
+                    
+                    {company.website && (
+                      <a
+                        href={formatWebsiteUrl(company.website)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-split-600 hover:text-split-700 text-sm flex items-center gap-1"
+                      >
+                        Website
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="card p-12 text-center">
+              <Building2 className="w-12 h-12 text-charcoal-300 mx-auto mb-4" />
+              <p className="text-charcoal-600">
+                {search ? 'No companies found matching your search' : 'No companies yet'}
+              </p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
