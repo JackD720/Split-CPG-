@@ -105,56 +105,112 @@ export default function Dashboard() {
     const totalSlots = split.slots || 1;
     const percentFilled = (filledSlots / totalSlots) * 100;
     
+    // Participant avatars component
+    const ParticipantAvatars = ({ participants, max = 3 }) => {
+      if (!participants || participants.length === 0) return null;
+      
+      const shown = participants.slice(0, max);
+      const remaining = participants.length - max;
+      
+      return (
+        <div className="flex -space-x-2">
+          {shown.map((p, i) => (
+            <div 
+              key={p.companyId || i}
+              className="w-7 h-7 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center overflow-hidden"
+              title={p.companyName || 'Participant'}
+            >
+              {p.companyLogo ? (
+                <img 
+                  src={p.companyLogo} 
+                  alt={p.companyName || ''} 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-xs font-medium text-gray-600">
+                  {p.companyName?.charAt(0) || '?'}
+                </span>
+              )}
+            </div>
+          ))}
+          {remaining > 0 && (
+            <div className="w-7 h-7 rounded-full border-2 border-white bg-gray-800 flex items-center justify-center">
+              <span className="text-xs font-medium text-white">+{remaining}</span>
+            </div>
+          )}
+        </div>
+      );
+    };
+    
     return (
       <Link 
         to={`/splits/${split.id}`}
-        className="block bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow"
+        className="block bg-white rounded-xl border border-gray-200 hover:shadow-md transition-shadow overflow-hidden"
       >
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${colorClass}`}>
-              <Icon className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">{split.title}</h3>
-              <p className="text-sm text-gray-500 capitalize">{split.type} Split</p>
-            </div>
+        {/* Cover Image */}
+        {split.imageUrl && (
+          <div className="h-32 overflow-hidden">
+            <img 
+              src={split.imageUrl} 
+              alt={split.title}
+              className="w-full h-full object-cover"
+              onError={(e) => e.target.parentElement.style.display = 'none'}
+            />
           </div>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-            split.status === 'open' ? 'bg-green-100 text-green-700' :
-            split.status === 'full' ? 'bg-yellow-100 text-yellow-700' :
-            'bg-gray-100 text-gray-700'
-          }`}>
-            {split.status?.toUpperCase()}
-          </span>
-        </div>
+        )}
         
-        <div className="space-y-3">
-          <div>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-gray-600">{filledSlots} of {totalSlots} spots</span>
-              <span className="font-medium text-orange-600">
-                ${split.costPerSlot || Math.round(split.totalCost / totalSlots)}/spot
-              </span>
+        <div className="p-5">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${colorClass}`}>
+                <Icon className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">{split.title}</h3>
+                <p className="text-sm text-gray-500 capitalize">{split.type} Split</p>
+              </div>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-orange-500 h-2 rounded-full transition-all"
-                style={{ width: `${percentFilled}%` }}
-              />
-            </div>
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+              split.status === 'open' ? 'bg-green-100 text-green-700' :
+              split.status === 'full' ? 'bg-yellow-100 text-yellow-700' :
+              'bg-gray-100 text-gray-700'
+            }`}>
+              {split.status?.toUpperCase()}
+            </span>
           </div>
           
-          {split.deadline && (
-            <div className="flex items-center gap-1 text-sm text-gray-500">
-              <Clock className="w-4 h-4" />
-              <span>Deadline: {new Date(split.deadline).toLocaleDateString()}</span>
+          <div className="space-y-3">
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-600">{filledSlots} of {totalSlots} spots</span>
+                <span className="font-medium text-orange-600">
+                  ${split.costPerSlot || Math.round(split.totalCost / totalSlots)}/spot
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-orange-500 h-2 rounded-full transition-all"
+                  style={{ width: `${percentFilled}%` }}
+                />
+              </div>
             </div>
-          )}
-          
-          {showOrganizer && split.organizerName && (
-            <p className="text-sm text-gray-500">by {split.organizerName}</p>
-          )}
+            
+            {/* Participant Avatars & Deadline Row */}
+            <div className="flex items-center justify-between">
+              <ParticipantAvatars participants={split.participants} max={3} />
+              
+              {split.deadline && (
+                <div className="flex items-center gap-1 text-sm text-gray-500">
+                  <Clock className="w-4 h-4" />
+                  <span>{new Date(split.deadline).toLocaleDateString()}</span>
+                </div>
+              )}
+            </div>
+            
+            {showOrganizer && (split.organizerName || split.organizer?.name) && (
+              <p className="text-sm text-gray-500">by {split.organizerName || split.organizer?.name}</p>
+            )}
+          </div>
         </div>
       </Link>
     );

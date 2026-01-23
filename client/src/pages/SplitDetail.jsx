@@ -20,13 +20,15 @@ import {
 const typeIcons = {
   content: Camera,
   housing: Home,
-  popup: Store
+  popup: Store,
+  other: Calendar
 };
 
 const typeColors = {
   content: 'bg-blue-100 text-blue-600',
   housing: 'bg-purple-100 text-purple-600',
-  popup: 'bg-green-100 text-green-600'
+  popup: 'bg-green-100 text-green-600',
+  other: 'bg-gray-100 text-gray-600'
 };
 
 // Helper component for company avatar with logo support
@@ -206,6 +208,18 @@ export default function SplitDetail() {
         <ArrowLeft className="w-4 h-4" />
         Back to Splits
       </button>
+
+      {/* Cover Image */}
+      {split.imageUrl && (
+        <div className="rounded-2xl overflow-hidden mb-6 shadow-lg">
+          <img 
+            src={split.imageUrl} 
+            alt={split.title}
+            className="w-full h-64 object-cover"
+            onError={(e) => e.target.parentElement.style.display = 'none'}
+          />
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main Content */}

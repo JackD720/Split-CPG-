@@ -10,7 +10,8 @@ import {
   Plus,
   Search,
   Clock,
-  MapPin
+  MapPin,
+  Calendar
 } from 'lucide-react';
 
 const typeIcons = {
@@ -38,6 +39,45 @@ const filterOptions = {
     { value: 'full', label: 'Full' }
   ]
 };
+
+// Participant avatar component
+function ParticipantAvatars({ participants, max = 4 }) {
+  if (!participants || participants.length === 0) return null;
+  
+  const shown = participants.slice(0, max);
+  const remaining = participants.length - max;
+  
+  return (
+    <div className="flex items-center">
+      <div className="flex -space-x-2">
+        {shown.map((p, i) => (
+          <div 
+            key={p.companyId || i}
+            className="w-8 h-8 rounded-full border-2 border-white bg-charcoal-100 flex items-center justify-center overflow-hidden"
+            title={p.companyName || 'Participant'}
+          >
+            {p.companyLogo ? (
+              <img 
+                src={p.companyLogo} 
+                alt={p.companyName || ''} 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-xs font-medium text-charcoal-600">
+                {p.companyName?.charAt(0) || '?'}
+              </span>
+            )}
+          </div>
+        ))}
+        {remaining > 0 && (
+          <div className="w-8 h-8 rounded-full border-2 border-white bg-charcoal-800 flex items-center justify-center">
+            <span className="text-xs font-medium text-white">+{remaining}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function Splits() {
   const { company } = useAuth();
@@ -172,77 +212,93 @@ export default function Splits() {
               <Link
                 key={split.id}
                 to={`/splits/${split.id}`}
-                className="card p-6 block hover:translate-y-[-2px] transition-all duration-300 animate-fade-in"
+                className="card block hover:translate-y-[-2px] transition-all duration-300 animate-fade-in overflow-hidden"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                {/* Header */}
-                <div className="flex items-start gap-3 mb-4">
-                  <div className={`w-12 h-12 ${typeColors[split.type]} rounded-xl flex items-center justify-center flex-shrink-0 border`}>
-                    <Icon className="w-6 h-6" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-charcoal-800 truncate">{split.title}</h3>
-                    <p className="text-sm text-charcoal-500 capitalize">{split.type} Split</p>
-                  </div>
-                  <span className={`badge ${split.status === 'open' ? 'badge-open' : 'badge-full'}`}>
-                    {split.status}
-                  </span>
-                </div>
-
-                {/* Description */}
-                <p className="text-sm text-charcoal-600 mb-4 line-clamp-2">
-                  {split.description}
-                </p>
-
-                {/* Location & Deadline */}
-                <div className="flex items-center gap-4 text-xs text-charcoal-500 mb-4">
-                  {split.location && (
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      {split.location}
-                    </span>
-                  )}
-                  {split.deadline && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {new Date(split.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </span>
-                  )}
-                </div>
-
-                {/* Progress */}
-                <div className="mb-4">
-                  <div className="flex justify-between text-xs mb-1.5">
-                    <span className="text-charcoal-600">{split.filledSlots} of {split.slots} spots</span>
-                    <span className="text-charcoal-500">
-                      {split.slots - split.filledSlots} left
-                    </span>
-                  </div>
-                  <div className="h-2 bg-charcoal-100 rounded-full">
-                    <div 
-                      className="h-2 bg-split-500 rounded-full transition-all duration-500"
-                      style={{ width: `${progress}%` }}
+                {/* Cover Image */}
+                {split.imageUrl && (
+                  <div className="h-36 -mx-0 -mt-0 mb-4 overflow-hidden">
+                    <img 
+                      src={split.imageUrl} 
+                      alt={split.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => e.target.parentElement.style.display = 'none'}
                     />
                   </div>
-                </div>
-
-                {/* Cost */}
-                <div className="flex items-center justify-between pt-4 border-t border-charcoal-100">
-                  <div>
-                    <p className="text-xs text-charcoal-500">Your cost</p>
-                    <p className="text-xl font-semibold text-split-600">${split.costPerSlot}</p>
+                )}
+                
+                <div className="p-6 pt-0">
+                  {/* Add padding back if no image */}
+                  {!split.imageUrl && <div className="pt-6" />}
+                  
+                  {/* Header */}
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className={`w-12 h-12 ${typeColors[split.type]} rounded-xl flex items-center justify-center flex-shrink-0 border`}>
+                      <Icon className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-charcoal-800 truncate">{split.title}</h3>
+                      <p className="text-sm text-charcoal-500 capitalize">{split.type} Split</p>
+                    </div>
+                    <span className={`badge ${split.status === 'open' ? 'badge-open' : 'badge-full'}`}>
+                      {split.status}
+                    </span>
                   </div>
-                  <div>
-                    <p className="text-xs text-charcoal-500">Total</p>
-                    <p className="text-sm text-charcoal-600">${split.totalCost}</p>
-                  </div>
-                </div>
 
-                {/* Organizer */}
-                <div className="mt-3">
-                  <p className="text-xs text-charcoal-400">
-                    by {split.organizerName || split.organizer?.name || 'Unknown'}
+                  {/* Description */}
+                  <p className="text-sm text-charcoal-600 mb-4 line-clamp-2">
+                    {split.description}
                   </p>
+
+                  {/* Location & Deadline */}
+                  <div className="flex items-center gap-4 text-xs text-charcoal-500 mb-4">
+                    {split.location && (
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        {split.location}
+                      </span>
+                    )}
+                    {split.deadline && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {new Date(split.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Progress */}
+                  <div className="mb-4">
+                    <div className="flex justify-between text-xs mb-1.5">
+                      <span className="text-charcoal-600">{split.filledSlots} of {split.slots} spots</span>
+                      <span className="text-charcoal-500">
+                        {split.slots - split.filledSlots} left
+                      </span>
+                    </div>
+                    <div className="h-2 bg-charcoal-100 rounded-full">
+                      <div 
+                        className="h-2 bg-split-500 rounded-full transition-all duration-500"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Cost & Participants */}
+                  <div className="flex items-center justify-between pt-4 border-t border-charcoal-100">
+                    <div>
+                      <p className="text-xs text-charcoal-500">Your cost</p>
+                      <p className="text-xl font-semibold text-split-600">${split.costPerSlot}</p>
+                    </div>
+                    
+                    {/* Participant Avatars */}
+                    <ParticipantAvatars participants={split.participants} max={4} />
+                  </div>
+
+                  {/* Organizer */}
+                  <div className="mt-3">
+                    <p className="text-xs text-charcoal-400">
+                      by {split.organizerName || split.organizer?.name || 'Unknown'}
+                    </p>
+                  </div>
                 </div>
               </Link>
             );

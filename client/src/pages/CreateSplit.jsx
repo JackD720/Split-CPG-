@@ -13,7 +13,8 @@ import {
   Calendar,
   MapPin,
   Info,
-  CheckCircle
+  CheckCircle,
+  ImageIcon
 } from 'lucide-react';
 
 const splitTypes = [
@@ -60,7 +61,8 @@ export default function CreateSplit() {
     location: '',
     eventDate: '',
     vendorName: '',
-    vendorDetails: ''
+    vendorDetails: '',
+    imageUrl: ''
   });
 
 
@@ -364,6 +366,35 @@ export default function CreateSplit() {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Image URL */}
+            <div>
+              <label className="label">Cover Image URL (optional)</label>
+              <div className="relative">
+                <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
+                <input
+                  type="url"
+                  name="imageUrl"
+                  className="input pl-10"
+                  placeholder="https://airbnb.com/rooms/... or any image URL"
+                  value={formData.imageUrl}
+                  onChange={handleChange}
+                />
+              </div>
+              <p className="text-xs text-charcoal-500 mt-1">
+                Paste an Airbnb link, venue photo, or any image URL to make your split stand out
+              </p>
+              {formData.imageUrl && (
+                <div className="mt-3 rounded-xl overflow-hidden border border-charcoal-200">
+                  <img 
+                    src={formData.imageUrl} 
+                    alt="Preview" 
+                    className="w-full h-40 object-cover"
+                    onError={(e) => e.target.style.display = 'none'}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}

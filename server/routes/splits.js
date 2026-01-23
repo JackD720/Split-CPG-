@@ -141,7 +141,8 @@ router.post('/', async (req, res) => {
       eventDate,
       organizerId,
       vendorName,
-      vendorDetails
+      vendorDetails,
+      imageUrl
     } = req.body;
     
     // Validation
@@ -154,6 +155,9 @@ router.post('/', async (req, res) => {
     if (!SPLIT_TYPES.includes(type)) {
       return res.status(400).json({ error: 'Invalid split type' });
     }
+    
+    // Fetch organizer company info
+    const organizer = await findCompany(organizerId);
     
     const costPerSlot = Math.ceil(totalCost / slots);
     
@@ -169,10 +173,15 @@ router.post('/', async (req, res) => {
       location: location || '',
       eventDate: eventDate || null,
       organizerId,
+      organizerName: organizer?.name || null,
+      organizerLogo: organizer?.logoUrl || organizer?.logo || null,
       vendorName: vendorName || null,
       vendorDetails: vendorDetails || null,
+      imageUrl: imageUrl || null,
       participants: [{
         companyId: organizerId,
+        companyName: organizer?.name || null,
+        companyLogo: organizer?.logoUrl || organizer?.logo || null,
         joinedAt: new Date().toISOString(),
         paid: false,
         paymentIntentId: null
@@ -224,9 +233,14 @@ router.post('/:id/join', async (req, res) => {
       return res.status(400).json({ error: 'No slots available' });
     }
     
-    // Add participant
+    // Fetch joining company info
+    const joiningCompany = await findCompany(companyId);
+    
+    // Add participant with company info
     const newParticipant = {
       companyId,
+      companyName: joiningCompany?.name || null,
+      companyLogo: joiningCompany?.logoUrl || joiningCompany?.logo || null,
       joinedAt: new Date().toISOString(),
       paid: false,
       paymentIntentId: null
