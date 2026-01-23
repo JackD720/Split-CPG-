@@ -64,9 +64,12 @@ export default function Dashboard() {
         
         // Calculate stats
         const activeSplits = mine.filter(s => s.status === 'open' || s.status === 'full').length;
+        
+        // Savings = what you would have paid alone (totalCost) minus what you actually pay (costPerSlot)
         const savedThisMonth = mine.reduce((total, s) => {
-          if (s.costPerSlot) {
-            return total + s.costPerSlot;
+          if (s.totalCost && s.costPerSlot) {
+            // You saved the difference between total cost and your share
+            return total + (s.totalCost - s.costPerSlot);
           }
           return total;
         }, 0);

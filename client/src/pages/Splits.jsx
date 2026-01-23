@@ -214,8 +214,8 @@ export default function Splits() {
                 <div className="mb-4">
                   <div className="flex justify-between text-xs mb-1.5">
                     <span className="text-charcoal-600">{split.filledSlots} of {split.slots} spots</span>
-                    <span className={`badge ${split.status === 'open' ? 'badge-open' : 'badge-full'}`}>
-                      {split.status}
+                    <span className="text-charcoal-500">
+                      {split.slots - split.filledSlots} left
                     </span>
                   </div>
                   <div className="h-2 bg-charcoal-100 rounded-full">

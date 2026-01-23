@@ -158,7 +158,7 @@ export default function SplitDetail() {
     
     try {
       setActionLoading(true);
-      await api.cancelSplit(id);
+      await api.cancelSplit(id, company.id);
       navigate('/splits');
     } catch (err) {
       console.error('Error canceling split:', err);

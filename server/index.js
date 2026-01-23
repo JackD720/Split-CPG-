@@ -1,3 +1,6 @@
+Index · JS
+Copy
+
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -12,7 +15,16 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true
 }));
-app.use(express.json());
+
+// Apply express.json() to all routes EXCEPT the Stripe webhook
+// Webhook needs raw body for signature verification
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/payments/webhook') {
+    next();
+  } else {
+    express.json()(req, res, next);
+  }
+});
 
 // Routes
 app.use('/api/companies', require('./routes/companies'));

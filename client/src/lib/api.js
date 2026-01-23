@@ -44,10 +44,11 @@ export const api = {
     return res.json();
   },
 
-  cancelSplit: async (id) => {
+  cancelSplit: async (id, companyId) => {
     const res = await fetch(API_URL + '/api/splits/' + id + '/cancel', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companyId }),
     });
     if (!res.ok) throw new Error('Failed to cancel split');
     return res.json();
