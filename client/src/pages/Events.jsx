@@ -7,7 +7,8 @@ import {
   Filter,
   Plus,
   Users,
-  Building
+  Building,
+  X
 } from 'lucide-react';
 
 // Mock events data
@@ -104,6 +105,35 @@ export default function Events() {
   const [events, setEvents] = useState(mockEvents);
   const [typeFilter, setTypeFilter] = useState('all');
   const [cityFilter, setCityFilter] = useState('all');
+  const [showSuggestModal, setShowSuggestModal] = useState(false);
+  const [suggestForm, setSuggestForm] = useState({
+    name: '',
+    website: '',
+    date: '',
+    city: '',
+    notes: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSuggestSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    
+    // Simulate API call - in production this would send to your backend
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    console.log('Event suggestion submitted:', suggestForm);
+    setSubmitting(false);
+    setSubmitted(true);
+    
+    // Reset after showing success
+    setTimeout(() => {
+      setShowSuggestModal(false);
+      setSubmitted(false);
+      setSuggestForm({ name: '', website: '', date: '', city: '', notes: '' });
+    }, 2000);
+  };
 
   // Get unique cities
   const cities = [...new Set(mockEvents.map(e => e.city))];
@@ -277,11 +307,139 @@ export default function Events() {
             <h3 className="font-display text-lg">Know of an event we're missing?</h3>
             <p className="text-charcoal-400 text-sm">Help the community by suggesting events</p>
           </div>
-          <button className="btn-primary bg-white text-charcoal-900 hover:bg-charcoal-100">
+          <button 
+            onClick={() => setShowSuggestModal(true)}
+            className="btn-primary bg-white text-charcoal-900 hover:bg-charcoal-100"
+          >
             Suggest Event
           </button>
         </div>
       </div>
+
+      {/* Suggest Event Modal */}
+      {showSuggestModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => !submitting && setShowSuggestModal(false)}
+          />
+          
+          {/* Modal */}
+          <div className="relative bg-white rounded-2xl shadow-xl max-w-lg w-full mx-4 overflow-hidden animate-fade-in">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-charcoal-100">
+              <h3 className="text-xl font-semibold text-charcoal-900">Suggest an Event</h3>
+              <button
+                onClick={() => !submitting && setShowSuggestModal(false)}
+                className="p-2 hover:bg-charcoal-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-charcoal-500" />
+              </button>
+            </div>
+            
+            {submitted ? (
+              <div className="p-12 text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h4 className="text-lg font-semibold text-charcoal-900 mb-2">Thanks for the suggestion!</h4>
+                <p className="text-charcoal-600">We'll review it and add it to the calendar if it's a good fit.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSuggestSubmit}>
+                <div className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal-700 mb-1">
+                      Event Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={suggestForm.name}
+                      onChange={(e) => setSuggestForm(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-4 py-2.5 rounded-xl border border-charcoal-200 focus:border-split-500 focus:ring-2 focus:ring-split-500/20 outline-none"
+                      placeholder="e.g. Natural Products Expo East"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal-700 mb-1">
+                      Website
+                    </label>
+                    <input
+                      type="url"
+                      value={suggestForm.website}
+                      onChange={(e) => setSuggestForm(prev => ({ ...prev, website: e.target.value }))}
+                      className="w-full px-4 py-2.5 rounded-xl border border-charcoal-200 focus:border-split-500 focus:ring-2 focus:ring-split-500/20 outline-none"
+                      placeholder="https://..."
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-charcoal-700 mb-1">
+                        Date
+                      </label>
+                      <input
+                        type="date"
+                        value={suggestForm.date}
+                        onChange={(e) => setSuggestForm(prev => ({ ...prev, date: e.target.value }))}
+                        className="w-full px-4 py-2.5 rounded-xl border border-charcoal-200 focus:border-split-500 focus:ring-2 focus:ring-split-500/20 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-charcoal-700 mb-1">
+                        City
+                      </label>
+                      <input
+                        type="text"
+                        value={suggestForm.city}
+                        onChange={(e) => setSuggestForm(prev => ({ ...prev, city: e.target.value }))}
+                        className="w-full px-4 py-2.5 rounded-xl border border-charcoal-200 focus:border-split-500 focus:ring-2 focus:ring-split-500/20 outline-none"
+                        placeholder="e.g. Philadelphia, PA"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal-700 mb-1">
+                      Additional Notes
+                    </label>
+                    <textarea
+                      value={suggestForm.notes}
+                      onChange={(e) => setSuggestForm(prev => ({ ...prev, notes: e.target.value }))}
+                      rows={3}
+                      className="w-full px-4 py-2.5 rounded-xl border border-charcoal-200 focus:border-split-500 focus:ring-2 focus:ring-split-500/20 outline-none resize-none"
+                      placeholder="Any other details about this event..."
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex gap-3 p-4 bg-charcoal-50 border-t border-charcoal-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowSuggestModal(false)}
+                    disabled={submitting}
+                    className="flex-1 px-4 py-2.5 rounded-xl border border-charcoal-200 text-charcoal-700 font-medium hover:bg-charcoal-100 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting || !suggestForm.name}
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-split-500 text-white font-medium hover:bg-split-600 transition-colors disabled:opacity-50"
+                  >
+                    {submitting ? 'Submitting...' : 'Submit Suggestion'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

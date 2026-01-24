@@ -43,6 +43,7 @@ export default function Settings() {
   const [logoPreview, setLogoPreview] = useState(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [logoRemoved, setLogoRemoved] = useState(false);
   
   // Get current logo URL
   const currentLogo = company?.logoUrl || company?.logo;
@@ -78,6 +79,7 @@ export default function Settings() {
     }
     
     setLogoFile(file);
+    setLogoRemoved(false);
     setSaved(false);
     
     // Create preview
@@ -124,6 +126,7 @@ export default function Settings() {
   const handleRemoveLogo = () => {
     setLogoFile(null);
     setLogoPreview(null);
+    setLogoRemoved(true);
     setSaved(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -165,7 +168,7 @@ export default function Settings() {
         if (uploadedUrl) {
           logoUrl = uploadedUrl;
         }
-      } else if (logoPreview === null && currentLogo) {
+      } else if (logoRemoved) {
         // Logo was removed
         logoUrl = null;
       }
@@ -178,6 +181,7 @@ export default function Settings() {
       
       setSaved(true);
       setLogoFile(null); // Clear file after successful upload
+      setLogoRemoved(false); // Reset removed state
     } catch (error) {
       console.error('Error saving:', error);
     } finally {
@@ -262,8 +266,8 @@ export default function Settings() {
     { id: 'account', label: 'Account', icon: User }
   ];
 
-  // Determine what logo to show (new preview takes priority)
-  const displayLogo = logoPreview || (logoPreview !== null ? currentLogo : null);
+  // Determine what logo to show
+  const displayLogo = logoRemoved ? null : (logoPreview || currentLogo);
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
@@ -307,17 +311,21 @@ export default function Settings() {
               <div className="flex items-start gap-6">
                 {/* Current/Preview Logo */}
                 <div className="flex-shrink-0">
-                  {displayLogo || currentLogo ? (
-                    <div className="relative group">
+                  {displayLogo ? (
+                    <div className="relative">
                       <img 
-                        src={displayLogo || currentLogo} 
+                        src={displayLogo} 
                         alt="Company logo" 
                         className="w-24 h-24 object-cover rounded-xl border-2 border-charcoal-200"
                       />
                       <button
                         type="button"
-                        onClick={handleRemoveLogo}
-                        className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleRemoveLogo();
+                        }}
+                        className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg z-10"
                       >
                         <X className="w-3 h-3" />
                       </button>
