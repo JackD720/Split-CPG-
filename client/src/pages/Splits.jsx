@@ -237,9 +237,20 @@ export default function Splits() {
                       <h3 className="font-medium text-charcoal-800 truncate">{split.title}</h3>
                       <p className="text-sm text-charcoal-500 capitalize">{split.type} Split</p>
                     </div>
-                    <span className={`badge ${split.status === 'open' ? 'badge-open' : 'badge-full'}`}>
-                      {split.status}
-                    </span>
+                    {(() => {
+                      // Check if all NON-ORGANIZER participants have paid
+                      const nonOrganizerParticipants = split.participants?.filter(p => p.companyId !== split.organizerId) || [];
+                      const allPaid = nonOrganizerParticipants.length > 0 && 
+                        nonOrganizerParticipants.every(p => p.paid) && 
+                        split.filledSlots === split.slots;
+                      if (allPaid || split.status === 'completed') {
+                        return <span className="badge bg-green-100 text-green-700 border-green-200">Paid</span>;
+                      } else if (split.status === 'full') {
+                        return <span className="badge badge-full">Full</span>;
+                      } else {
+                        return <span className="badge badge-open">Open</span>;
+                      }
+                    })()}
                   </div>
 
                   {/* Description */}
@@ -269,18 +280,29 @@ export default function Splits() {
 
                   {/* Progress */}
                   <div className="mb-4">
-                    <div className="flex justify-between text-xs mb-1.5">
-                      <span className="text-charcoal-600">{split.filledSlots} of {split.slots} spots</span>
-                      <span className="text-charcoal-500">
-                        {split.slots - split.filledSlots} left
-                      </span>
-                    </div>
-                    <div className="h-2 bg-charcoal-100 rounded-full">
-                      <div 
-                        className="h-2 bg-split-500 rounded-full transition-all duration-500"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
+                    {(() => {
+                      const nonOrganizerParticipants = split.participants?.filter(p => p.companyId !== split.organizerId) || [];
+                      const allPaid = nonOrganizerParticipants.length > 0 && 
+                        nonOrganizerParticipants.every(p => p.paid) && 
+                        split.filledSlots === split.slots;
+                      const isCompleted = allPaid || split.status === 'completed';
+                      return (
+                        <>
+                          <div className="flex justify-between text-xs mb-1.5">
+                            <span className="text-charcoal-600">{split.filledSlots} of {split.slots} spots</span>
+                            <span className={isCompleted ? "text-green-600 font-medium" : "text-charcoal-500"}>
+                              {isCompleted ? '✓ Locked in' : `${split.slots - split.filledSlots} left`}
+                            </span>
+                          </div>
+                          <div className="h-2 bg-charcoal-100 rounded-full">
+                            <div 
+                              className={`h-2 rounded-full transition-all duration-500 ${isCompleted ? 'bg-green-500' : 'bg-split-500'}`}
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {/* Cost & Participants */}

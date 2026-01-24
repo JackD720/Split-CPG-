@@ -171,28 +171,58 @@ export default function Dashboard() {
               </div>
             </div>
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-              split.status === 'open' ? 'bg-green-100 text-green-700' :
-              split.status === 'full' ? 'bg-yellow-100 text-yellow-700' :
-              'bg-gray-100 text-gray-700'
+              (() => {
+                const nonOrganizerParticipants = split.participants?.filter(p => p.companyId !== split.organizerId) || [];
+                const allPaid = nonOrganizerParticipants.length > 0 && 
+                  nonOrganizerParticipants.every(p => p.paid) && 
+                  filledSlots === totalSlots;
+                if (allPaid || split.status === 'completed') {
+                  return 'bg-green-100 text-green-700';
+                } else if (split.status === 'full') {
+                  return 'bg-yellow-100 text-yellow-700';
+                } else if (split.status === 'open') {
+                  return 'bg-blue-100 text-blue-700';
+                } else {
+                  return 'bg-gray-100 text-gray-700';
+                }
+              })()
             }`}>
-              {split.status?.toUpperCase()}
+              {(() => {
+                const nonOrganizerParticipants = split.participants?.filter(p => p.companyId !== split.organizerId) || [];
+                const allPaid = nonOrganizerParticipants.length > 0 && 
+                  nonOrganizerParticipants.every(p => p.paid) && 
+                  filledSlots === totalSlots;
+                if (allPaid || split.status === 'completed') return 'PAID';
+                return split.status?.toUpperCase();
+              })()}
             </span>
           </div>
           
           <div className="space-y-3">
             <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600">{filledSlots} of {totalSlots} spots</span>
-                <span className="font-medium text-orange-600">
-                  ${split.costPerSlot || Math.round(split.totalCost / totalSlots)}/spot
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-orange-500 h-2 rounded-full transition-all"
-                  style={{ width: `${percentFilled}%` }}
-                />
-              </div>
+              {(() => {
+                const nonOrganizerParticipants = split.participants?.filter(p => p.companyId !== split.organizerId) || [];
+                const allPaid = nonOrganizerParticipants.length > 0 && 
+                  nonOrganizerParticipants.every(p => p.paid) && 
+                  filledSlots === totalSlots;
+                const isCompleted = allPaid || split.status === 'completed';
+                return (
+                  <>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-gray-600">{filledSlots} of {totalSlots} spots</span>
+                      <span className={`font-medium ${isCompleted ? 'text-green-600' : 'text-orange-600'}`}>
+                        {isCompleted ? '✓ Locked in' : `$${split.costPerSlot || Math.round(split.totalCost / totalSlots)}/spot`}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full transition-all ${isCompleted ? 'bg-green-500' : 'bg-orange-500'}`}
+                        style={{ width: `${percentFilled}%` }}
+                      />
+                    </div>
+                  </>
+                );
+              })()}
             </div>
             
             {/* Participant Avatars & Deadline Row */}
