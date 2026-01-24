@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/api';
+import { storage } from '../config/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 
   Camera, 
   Home, 
@@ -14,7 +16,10 @@ import {
   MapPin,
   Info,
   CheckCircle,
-  ImageIcon
+  ImageIcon,
+  Upload,
+  X,
+  Link as LinkIcon
 } from 'lucide-react';
 
 const splitTypes = [
@@ -65,7 +70,13 @@ export default function CreateSplit() {
     imageUrl: ''
   });
 
-
+  // Image upload state
+  const fileInputRef = useRef(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageMode, setImageMode] = useState('upload'); // 'upload' or 'url'
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -74,6 +85,73 @@ export default function CreateSplit() {
 
   const handleTypeSelect = (type) => {
     setFormData(prev => ({ ...prev, type }));
+  };
+
+  // Image upload handlers
+  const handleFileSelect = (file) => {
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (PNG, JPG, etc.)');
+      return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB');
+      return;
+    }
+    
+    setImageFile(file);
+    setFormData(prev => ({ ...prev, imageUrl: '' })); // Clear URL if uploading file
+    
+    const reader = new FileReader();
+    reader.onload = (e) => setImagePreview(e.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    handleFileSelect(file);
+  };
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setFormData(prev => ({ ...prev, imageUrl: '' }));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const uploadImage = async () => {
+    if (!imageFile || !company?.id) return null;
+    
+    setUploadingImage(true);
+    try {
+      const fileExtension = imageFile.name.split('.').pop();
+      const fileName = `splits/${company.id}/split_${Date.now()}.${fileExtension}`;
+      const storageRef = ref(storage, fileName);
+      
+      await uploadBytes(storageRef, imageFile);
+      const downloadUrl = await getDownloadURL(storageRef);
+      return downloadUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      return null;
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const costPerSlot = formData.totalCost && formData.slots 
@@ -91,8 +169,18 @@ export default function CreateSplit() {
 
     setLoading(true);
     try {
+      // Upload image if file selected
+      let finalImageUrl = formData.imageUrl;
+      if (imageFile) {
+        const uploadedUrl = await uploadImage();
+        if (uploadedUrl) {
+          finalImageUrl = uploadedUrl;
+        }
+      }
+
       const split = await api.createSplit({
         ...formData,
+        imageUrl: finalImageUrl,
         totalCost: Number(formData.totalCost),
         slots: Number(formData.slots),
         organizerId: company.id
@@ -368,37 +456,91 @@ export default function CreateSplit() {
               </div>
             </div>
 
-            {/* Image URL */}
+            {/* Cover Image */}
             <div>
-              <label className="label">Cover Image URL (optional)</label>
-              <div className="relative">
-                <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
-                <input
-                  type="url"
-                  name="imageUrl"
-                  className="input pl-10"
-                  placeholder="https://images.unsplash.com/photo-..."
-                  value={formData.imageUrl}
-                  onChange={handleChange}
-                />
-              </div>
-              <p className="text-xs text-charcoal-500 mt-1">
-                Right-click any image online → "Copy image address" to get a direct image URL
-              </p>
-              {formData.imageUrl && (
-                <div className="mt-3 rounded-xl overflow-hidden border border-charcoal-200">
+              <label className="label">Cover Image (optional)</label>
+              
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleFileSelect(e.target.files?.[0])}
+                className="hidden"
+              />
+              
+              {/* Image Preview or Upload Area */}
+              {imagePreview || formData.imageUrl ? (
+                <div className="relative rounded-xl overflow-hidden border border-charcoal-200">
                   <img 
-                    src={formData.imageUrl} 
+                    src={imagePreview || formData.imageUrl} 
                     alt="Preview" 
-                    className="w-full h-40 object-cover"
+                    className="w-full h-48 object-cover"
                     onError={(e) => {
-                      e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'flex';
+                      e.target.src = '';
+                      e.target.alt = 'Failed to load';
                     }}
                   />
-                  <div className="hidden h-40 items-center justify-center bg-charcoal-100 text-charcoal-500 text-sm">
-                    Image failed to load - make sure it's a direct image URL
-                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  {imageFile && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                      <p className="text-white text-sm truncate">{imageFile.name}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all
+                    ${dragActive 
+                      ? 'border-split-500 bg-split-50' 
+                      : 'border-charcoal-200 hover:border-split-400 hover:bg-charcoal-50'
+                    }`}
+                >
+                  <Upload className={`w-10 h-10 mx-auto mb-3 ${dragActive ? 'text-split-500' : 'text-charcoal-400'}`} />
+                  <p className={`font-medium ${dragActive ? 'text-split-600' : 'text-charcoal-700'}`}>
+                    Drop an image here or click to upload
+                  </p>
+                  <p className="text-sm text-charcoal-500 mt-1">
+                    PNG, JPG up to 5MB
+                  </p>
+                </div>
+              )}
+              
+              {/* URL alternative */}
+              {!imagePreview && !formData.imageUrl && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setImageMode(imageMode === 'url' ? 'upload' : 'url')}
+                    className="text-sm text-split-600 hover:text-split-700 flex items-center gap-1"
+                  >
+                    <LinkIcon className="w-3 h-3" />
+                    {imageMode === 'url' ? 'Upload file instead' : 'Or paste image URL'}
+                  </button>
+                  
+                  {imageMode === 'url' && (
+                    <div className="mt-2">
+                      <input
+                        type="url"
+                        name="imageUrl"
+                        className="input text-sm"
+                        placeholder="https://example.com/image.jpg"
+                        value={formData.imageUrl}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -444,6 +586,17 @@ export default function CreateSplit() {
             {/* Summary */}
             <div className="card-elevated p-6 mt-8">
               <h3 className="font-display text-lg text-charcoal-900 mb-4">Summary</h3>
+              
+              {/* Image Preview in Summary */}
+              {(imagePreview || formData.imageUrl) && (
+                <div className="mb-4 rounded-xl overflow-hidden">
+                  <img 
+                    src={imagePreview || formData.imageUrl} 
+                    alt="Cover" 
+                    className="w-full h-32 object-cover"
+                  />
+                </div>
+              )}
               
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
@@ -500,11 +653,11 @@ export default function CreateSplit() {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={loading || !canProceed()}
+              disabled={loading || uploadingImage || !canProceed()}
               className="btn-primary"
             >
-              {loading ? 'Creating...' : 'Create Split'}
-              {!loading && <ArrowRight className="w-4 h-4" />}
+              {uploadingImage ? 'Uploading image...' : loading ? 'Creating...' : 'Create Split'}
+              {!loading && !uploadingImage && <ArrowRight className="w-4 h-4" />}
             </button>
           )}
         </div>
