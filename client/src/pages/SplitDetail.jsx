@@ -170,6 +170,44 @@ export default function SplitDetail() {
     }
   };
 
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  
+  const handlePayment = async () => {
+    if (!company?.id) {
+      alert('Please complete your company profile first');
+      return;
+    }
+    
+    try {
+      setPaymentLoading(true);
+      const API_URL = 'https://split-backend-720273557833.us-central1.run.app';
+      
+      const response = await fetch(`${API_URL}/api/payments/split/${id}/pay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companyId: company.id })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create payment session');
+      }
+      
+      // Redirect to Stripe Checkout
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (err) {
+      console.error('Payment error:', err);
+      alert(err.message || 'Failed to initiate payment. Please try again.');
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
   // Confirmation Modal Component
   const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText, confirmColor = 'red', loading }) => {
     if (!isOpen) return null;
@@ -430,10 +468,11 @@ export default function SplitDetail() {
             {isParticipant && !isOrganizer && !myParticipation?.paid && (
               <>
                 <button
+                  onClick={handlePayment}
                   className="btn-primary w-full mb-3"
-                  disabled={split.status !== 'full'}
+                  disabled={split.status !== 'full' || paymentLoading}
                 >
-                  {split.status === 'full' ? 'Pay Now' : 'Payment opens when full'}
+                  {paymentLoading ? 'Redirecting to payment...' : split.status === 'full' ? 'Pay Now' : 'Payment opens when full'}
                 </button>
                 <button
                   onClick={() => setShowLeaveModal(true)}

@@ -145,7 +145,7 @@ router.get('/connect/status/:companyId', async (req, res) => {
   }
 });
 
-// Create payment intent for split participation
+// Create Stripe Checkout Session for split payment
 router.post('/split/:splitId/pay', async (req, res) => {
   try {
     const { companyId } = req.body;
@@ -188,41 +188,47 @@ router.post('/split/:splitId/pay', async (req, res) => {
     // Platform fee (e.g., 2.5%)
     const platformFee = Math.round(amount * 0.025);
     
-    // Create payment intent with destination charge
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount,
-      currency: 'usd',
-      application_fee_amount: platformFee,
-      transfer_data: {
-        destination: organizer.stripeConnectId
+    // Get frontend URL for redirects
+    const frontendUrl = process.env.FRONTEND_URL || 'https://split-cpg.vercel.app';
+    
+    // Create Checkout Session with destination charge
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      payment_method_types: ['card'],
+      line_items: [{
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: `Split: ${split.title}`,
+            description: `Your share of the ${split.type} split`
+          },
+          unit_amount: amount
+        },
+        quantity: 1
+      }],
+      payment_intent_data: {
+        application_fee_amount: platformFee,
+        transfer_data: {
+          destination: organizer.stripeConnectId
+        },
+        metadata: {
+          splitId: req.params.splitId,
+          companyId,
+          splitTitle: split.title
+        }
       },
+      success_url: `${frontendUrl}/splits/${req.params.splitId}?payment=success`,
+      cancel_url: `${frontendUrl}/splits/${req.params.splitId}?payment=cancelled`,
       metadata: {
         splitId: req.params.splitId,
-        companyId,
-        splitTitle: split.title
+        companyId
       }
     });
     
-    // Update participant with payment intent
-    const updatedParticipants = split.participants.map(p => 
-      p.companyId === companyId 
-        ? { ...p, paymentIntentId: paymentIntent.id }
-        : p
-    );
-    
-    await db.collection('splits').doc(req.params.splitId).update({
-      participants: updatedParticipants,
-      updatedAt: new Date().toISOString()
-    });
-    
-    res.json({
-      clientSecret: paymentIntent.client_secret,
-      amount: split.costPerSlot,
-      splitTitle: split.title
-    });
+    res.json({ url: session.url });
   } catch (error) {
-    console.error('Error creating payment:', error);
-    res.status(500).json({ error: 'Failed to create payment' });
+    console.error('Error creating checkout session:', error);
+    res.status(500).json({ error: error.message || 'Failed to create payment session' });
   }
 });
 
