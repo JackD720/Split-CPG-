@@ -143,11 +143,14 @@ export default function CreateSplit() {
       const fileName = `splits/${company.id}/split_${Date.now()}.${fileExtension}`;
       const storageRef = ref(storage, fileName);
       
+      console.log('Uploading image to:', fileName);
       await uploadBytes(storageRef, imageFile);
       const downloadUrl = await getDownloadURL(storageRef);
+      console.log('Image uploaded successfully:', downloadUrl);
       return downloadUrl;
     } catch (error) {
       console.error('Error uploading image:', error);
+      alert('Failed to upload image: ' + error.message);
       return null;
     } finally {
       setUploadingImage(false);
@@ -172,12 +175,17 @@ export default function CreateSplit() {
       // Upload image if file selected
       let finalImageUrl = formData.imageUrl;
       if (imageFile) {
+        console.log('Uploading image file:', imageFile.name);
         const uploadedUrl = await uploadImage();
         if (uploadedUrl) {
           finalImageUrl = uploadedUrl;
+          console.log('Using uploaded image URL:', finalImageUrl);
+        } else {
+          console.log('Image upload failed, proceeding without image');
         }
       }
 
+      console.log('Creating split with imageUrl:', finalImageUrl);
       const split = await api.createSplit({
         ...formData,
         imageUrl: finalImageUrl,
