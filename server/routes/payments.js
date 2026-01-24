@@ -232,6 +232,61 @@ router.post('/split/:splitId/pay', async (req, res) => {
   }
 });
 
+// Confirm payment after successful checkout (called when user returns from Stripe)
+router.post('/split/:splitId/confirm', async (req, res) => {
+  try {
+    const { companyId } = req.body;
+    
+    if (!companyId) {
+      return res.status(400).json({ error: 'companyId is required' });
+    }
+    
+    // Get split details
+    const splitDoc = await db.collection('splits').doc(req.params.splitId).get();
+    if (!splitDoc.exists) {
+      return res.status(404).json({ error: 'Split not found' });
+    }
+    
+    const split = splitDoc.data();
+    
+    // Find participant
+    const participant = split.participants?.find(p => p.companyId === companyId);
+    if (!participant) {
+      return res.status(400).json({ error: 'Company is not a participant in this split' });
+    }
+    
+    // Already paid
+    if (participant.paid) {
+      return res.json({ success: true, message: 'Already marked as paid' });
+    }
+    
+    // Update participant as paid
+    const updatedParticipants = split.participants.map(p =>
+      p.companyId === companyId
+        ? { ...p, paid: true, paidAt: new Date().toISOString() }
+        : p
+    );
+    
+    // Check if all participants have paid
+    const allPaid = updatedParticipants.every(p => p.paid);
+    
+    await db.collection('splits').doc(req.params.splitId).update({
+      participants: updatedParticipants,
+      status: allPaid ? 'completed' : split.status,
+      updatedAt: new Date().toISOString()
+    });
+    
+    res.json({ 
+      success: true, 
+      allPaid,
+      message: allPaid ? 'All participants have paid!' : 'Payment confirmed'
+    });
+  } catch (error) {
+    console.error('Error confirming payment:', error);
+    res.status(500).json({ error: 'Failed to confirm payment' });
+  }
+});
+
 // Webhook handler for payment confirmations
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];

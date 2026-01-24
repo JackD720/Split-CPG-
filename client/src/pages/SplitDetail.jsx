@@ -68,6 +68,8 @@ export default function SplitDetail() {
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
   useEffect(() => {
     const fetchSplit = async () => {
       try {
@@ -83,6 +85,47 @@ export default function SplitDetail() {
     };
     fetchSplit();
   }, [id]);
+
+  // Handle return from Stripe checkout
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get('payment');
+    
+    if (paymentStatus === 'success' && company?.id) {
+      // Confirm payment in backend
+      const confirmPayment = async () => {
+        try {
+          const API_URL = 'https://split-backend-720273557833.us-central1.run.app';
+          const response = await fetch(`${API_URL}/api/payments/split/${id}/confirm`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ companyId: company.id })
+          });
+          
+          if (response.ok) {
+            setPaymentSuccess(true);
+            // Update local state to show paid
+            setSplit(prev => ({
+              ...prev,
+              participants: prev?.participants?.map(p => 
+                p.companyId === company.id ? { ...p, paid: true, paidAt: new Date().toISOString() } : p
+              )
+            }));
+          }
+        } catch (err) {
+          console.error('Error confirming payment:', err);
+        }
+        
+        // Clear URL params
+        window.history.replaceState({}, '', window.location.pathname);
+      };
+      
+      confirmPayment();
+    } else if (paymentStatus === 'cancelled') {
+      // Clear URL params
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [id, company?.id]);
 
   const handleJoin = async () => {
     if (!company?.id) {
@@ -282,6 +325,21 @@ export default function SplitDetail() {
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
+      {/* Payment Success Banner */}
+      {paymentSuccess && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+              <Check className="w-6 h-6 text-green-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-green-800">Payment Successful!</p>
+              <p className="text-sm text-green-700">Your payment has been confirmed. You're all set for this split!</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Back Button */}
       <button
         onClick={() => navigate('/splits')}
