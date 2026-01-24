@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { CreditCard, ExternalLink, Check, AlertCircle, Loader } from 'lucide-react';
 
+const API_URL = 'https://split-backend-720273557833.us-central1.run.app';
+
 // Helper to safely parse JSON response
 const safeJsonParse = async (response) => {
   const text = await response.text();
@@ -29,7 +31,7 @@ export default function StripeConnect() {
 
     try {
       // Create Connect account
-      const createResponse = await fetch('/api/payments/connect/create', {
+      const createResponse = await fetch(`${API_URL}/api/payments/connect/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -52,7 +54,7 @@ export default function StripeConnect() {
       const { accountId } = createData;
 
       // Get onboarding link
-      const linkResponse = await fetch('/api/payments/connect/onboarding', {
+      const linkResponse = await fetch(`${API_URL}/api/payments/connect/onboarding`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -93,7 +95,7 @@ export default function StripeConnect() {
     setLoading(true);
     try {
       // In production, this would create a login link to Stripe Express dashboard
-      const response = await fetch('/api/payments/connect/dashboard', {
+      const response = await fetch(`${API_URL}/api/payments/connect/dashboard`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ companyId: company.id })
@@ -117,7 +119,7 @@ export default function StripeConnect() {
   const completeOnboarding = async () => {
     setLoading(true);
     try {
-      const linkResponse = await fetch('/api/payments/connect/onboarding', {
+      const linkResponse = await fetch(`${API_URL}/api/payments/connect/onboarding`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
