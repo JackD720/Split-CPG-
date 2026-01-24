@@ -377,13 +377,13 @@ export default function CreateSplit() {
                   type="url"
                   name="imageUrl"
                   className="input pl-10"
-                  placeholder="https://airbnb.com/rooms/... or any image URL"
+                  placeholder="https://images.unsplash.com/photo-..."
                   value={formData.imageUrl}
                   onChange={handleChange}
                 />
               </div>
               <p className="text-xs text-charcoal-500 mt-1">
-                Paste an Airbnb link, venue photo, or any image URL to make your split stand out
+                Right-click any image online → "Copy image address" to get a direct image URL
               </p>
               {formData.imageUrl && (
                 <div className="mt-3 rounded-xl overflow-hidden border border-charcoal-200">
@@ -391,8 +391,14 @@ export default function CreateSplit() {
                     src={formData.imageUrl} 
                     alt="Preview" 
                     className="w-full h-40 object-cover"
-                    onError={(e) => e.target.style.display = 'none'}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
                   />
+                  <div className="hidden h-40 items-center justify-center bg-charcoal-100 text-charcoal-500 text-sm">
+                    Image failed to load - make sure it's a direct image URL
+                  </div>
                 </div>
               )}
             </div>

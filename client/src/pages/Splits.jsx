@@ -217,7 +217,7 @@ export default function Splits() {
               >
                 {/* Cover Image */}
                 {split.imageUrl && (
-                  <div className="h-36 -mx-0 -mt-0 mb-4 overflow-hidden">
+                  <div className="h-36 overflow-hidden">
                     <img 
                       src={split.imageUrl} 
                       alt={split.title}
@@ -227,10 +227,7 @@ export default function Splits() {
                   </div>
                 )}
                 
-                <div className="p-6 pt-0">
-                  {/* Add padding back if no image */}
-                  {!split.imageUrl && <div className="pt-6" />}
-                  
+                <div className="p-6">
                   {/* Header */}
                   <div className="flex items-start gap-3 mb-4">
                     <div className={`w-12 h-12 ${typeColors[split.type]} rounded-xl flex items-center justify-center flex-shrink-0 border`}>
@@ -246,25 +243,29 @@ export default function Splits() {
                   </div>
 
                   {/* Description */}
-                  <p className="text-sm text-charcoal-600 mb-4 line-clamp-2">
-                    {split.description}
-                  </p>
+                  {split.description && (
+                    <p className="text-sm text-charcoal-600 mb-4 line-clamp-2">
+                      {split.description}
+                    </p>
+                  )}
 
                   {/* Location & Deadline */}
-                  <div className="flex items-center gap-4 text-xs text-charcoal-500 mb-4">
-                    {split.location && (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        {split.location}
-                      </span>
-                    )}
-                    {split.deadline && (
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {new Date(split.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      </span>
-                    )}
-                  </div>
+                  {(split.location || split.deadline) && (
+                    <div className="flex items-center gap-4 text-xs text-charcoal-500 mb-4">
+                      {split.location && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {split.location}
+                        </span>
+                      )}
+                      {split.deadline && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {new Date(split.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   {/* Progress */}
                   <div className="mb-4">
