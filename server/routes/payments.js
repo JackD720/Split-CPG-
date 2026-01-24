@@ -267,8 +267,9 @@ router.post('/split/:splitId/confirm', async (req, res) => {
         : p
     );
     
-    // Check if all participants have paid
-    const allPaid = updatedParticipants.every(p => p.paid);
+    // Check if all NON-ORGANIZER participants have paid (organizer receives money, doesn't pay)
+    const nonOrganizerParticipants = updatedParticipants.filter(p => p.companyId !== split.organizerId);
+    const allPaid = nonOrganizerParticipants.length > 0 && nonOrganizerParticipants.every(p => p.paid);
     
     await db.collection('splits').doc(req.params.splitId).update({
       participants: updatedParticipants,
