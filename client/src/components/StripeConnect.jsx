@@ -2,6 +2,17 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { CreditCard, ExternalLink, Check, AlertCircle, Loader } from 'lucide-react';
 
+// Helper to safely parse JSON response
+const safeJsonParse = async (response) => {
+  const text = await response.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+};
+
 export default function StripeConnect() {
   const { company, updateCompany } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -28,12 +39,17 @@ export default function StripeConnect() {
         })
       });
 
+      const createData = await safeJsonParse(createResponse);
+
       if (!createResponse.ok) {
-        const data = await createResponse.json();
-        throw new Error(data.error || 'Failed to create account');
+        throw new Error(createData?.error || 'Failed to create account');
       }
 
-      const { accountId } = await createResponse.json();
+      if (!createData?.accountId) {
+        throw new Error('No account ID returned from server');
+      }
+
+      const { accountId } = createData;
 
       // Get onboarding link
       const linkResponse = await fetch('/api/payments/connect/onboarding', {
@@ -46,24 +62,24 @@ export default function StripeConnect() {
         })
       });
 
-      if (!linkResponse.ok) {
+      const linkData = await safeJsonParse(linkResponse);
+
+      if (!linkResponse.ok || !linkData?.url) {
         throw new Error('Failed to get onboarding link');
       }
-
-      const { url } = await linkResponse.json();
 
       // Update company with Stripe account ID
       await updateCompany({ stripeConnectId: accountId });
 
       // Redirect to Stripe onboarding
-      window.location.href = url;
+      window.location.href = linkData.url;
 
     } catch (err) {
       console.error('Stripe Connect error:', err);
       setError(err.message || 'Failed to connect Stripe. Please try again.');
       
       // For demo without backend, simulate the flow
-      if (err.message?.includes('fetch')) {
+      if (err.message?.includes('fetch') || err.message?.includes('No account')) {
         await updateCompany({ stripeConnectId: 'demo_account', stripeOnboarded: false });
         setError(null);
         alert('Demo mode: In production, this would redirect to Stripe onboarding. Account marked as created.');
@@ -83,9 +99,10 @@ export default function StripeConnect() {
         body: JSON.stringify({ companyId: company.id })
       });
 
-      if (response.ok) {
-        const { url } = await response.json();
-        window.open(url, '_blank');
+      const data = await safeJsonParse(response);
+
+      if (response.ok && data?.url) {
+        window.open(data.url, '_blank');
       } else {
         // Demo fallback
         window.open('https://dashboard.stripe.com', '_blank');
@@ -110,9 +127,10 @@ export default function StripeConnect() {
         })
       });
 
-      if (linkResponse.ok) {
-        const { url } = await linkResponse.json();
-        window.location.href = url;
+      const data = await safeJsonParse(linkResponse);
+
+      if (linkResponse.ok && data?.url) {
+        window.location.href = data.url;
       } else {
         // Demo mode
         await updateCompany({ stripeOnboarded: true });

@@ -15,6 +15,14 @@ router.post('/connect/create', async (req, res) => {
       return res.status(400).json({ error: 'companyId and email are required' });
     }
     
+    // Check if Stripe is properly configured
+    if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'sk_test_placeholder') {
+      return res.status(503).json({ 
+        error: 'Stripe is not configured. Please add STRIPE_SECRET_KEY to environment variables.',
+        demo: true 
+      });
+    }
+    
     // Check if company already has a Stripe account
     const companyDoc = await db.collection('companies').doc(companyId).get();
     if (!companyDoc.exists) {
@@ -56,7 +64,7 @@ router.post('/connect/create', async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating Connect account:', error);
-    res.status(500).json({ error: 'Failed to create Stripe Connect account' });
+    res.status(500).json({ error: error.message || 'Failed to create Stripe Connect account' });
   }
 });
 
@@ -64,6 +72,14 @@ router.post('/connect/create', async (req, res) => {
 router.post('/connect/onboarding', async (req, res) => {
   try {
     const { companyId, returnUrl, refreshUrl } = req.body;
+    
+    // Check if Stripe is properly configured
+    if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'sk_test_placeholder') {
+      return res.status(503).json({ 
+        error: 'Stripe is not configured. Please add STRIPE_SECRET_KEY to environment variables.',
+        demo: true 
+      });
+    }
     
     const companyDoc = await db.collection('companies').doc(companyId).get();
     if (!companyDoc.exists) {
@@ -85,7 +101,7 @@ router.post('/connect/onboarding', async (req, res) => {
     res.json({ url: accountLink.url });
   } catch (error) {
     console.error('Error creating onboarding link:', error);
-    res.status(500).json({ error: 'Failed to create onboarding link' });
+    res.status(500).json({ error: error.message || 'Failed to create onboarding link' });
   }
 });
 
@@ -269,6 +285,14 @@ router.post('/connect/dashboard', async (req, res) => {
   try {
     const { companyId } = req.body;
     
+    // Check if Stripe is properly configured
+    if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'sk_test_placeholder') {
+      return res.status(503).json({ 
+        error: 'Stripe is not configured',
+        demo: true 
+      });
+    }
+    
     const companyDoc = await db.collection('companies').doc(companyId).get();
     if (!companyDoc.exists) {
       return res.status(404).json({ error: 'Company not found' });
@@ -283,7 +307,7 @@ router.post('/connect/dashboard', async (req, res) => {
     res.json({ url: loginLink.url });
   } catch (error) {
     console.error('Error creating dashboard link:', error);
-    res.status(500).json({ error: 'Failed to create dashboard link' });
+    res.status(500).json({ error: error.message || 'Failed to create dashboard link' });
   }
 });
 
