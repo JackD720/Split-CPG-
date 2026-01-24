@@ -120,9 +120,38 @@ export default function SplitDetail() {
     }
   };
 
+  // Modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+
+  const handleDelete = async () => {
+    try {
+      setActionLoading(true);
+      await api.deleteSplit(id);
+      navigate('/splits');
+    } catch (err) {
+      console.error('Error deleting split:', err);
+      alert('Failed to delete split');
+    } finally {
+      setActionLoading(false);
+      setShowDeleteModal(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    try {
+      setActionLoading(true);
+      await api.cancelSplit(id, company.id);
+      navigate('/splits');
+    } catch (err) {
+      console.error('Error canceling split:', err);
+      alert('Failed to cancel split');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleLeave = async () => {
-    if (!window.confirm('Are you sure you want to leave this split?')) return;
-    
     try {
       setActionLoading(true);
       await api.leaveSplit(id, company.id);
@@ -137,37 +166,52 @@ export default function SplitDetail() {
       alert('Failed to leave split');
     } finally {
       setActionLoading(false);
+      setShowLeaveModal(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this split? This cannot be undone.')) return;
+  // Confirmation Modal Component
+  const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText, confirmColor = 'red', loading }) => {
+    if (!isOpen) return null;
     
-    try {
-      setActionLoading(true);
-      await api.deleteSplit(id);
-      navigate('/splits');
-    } catch (err) {
-      console.error('Error deleting split:', err);
-      alert('Failed to delete split');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleCancel = async () => {
-    if (!window.confirm('Are you sure you want to cancel this split?')) return;
-    
-    try {
-      setActionLoading(true);
-      await api.cancelSplit(id, company.id);
-      navigate('/splits');
-    } catch (err) {
-      console.error('Error canceling split:', err);
-      alert('Failed to cancel split');
-    } finally {
-      setActionLoading(false);
-    }
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        {/* Backdrop */}
+        <div 
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          onClick={onClose}
+        />
+        
+        {/* Modal */}
+        <div className="relative bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 overflow-hidden animate-fade-in">
+          <div className="p-6">
+            <h3 className="text-xl font-semibold text-charcoal-900 mb-2">{title}</h3>
+            <p className="text-charcoal-600">{message}</p>
+          </div>
+          
+          <div className="flex gap-3 p-4 bg-charcoal-50 border-t border-charcoal-100">
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className="flex-1 px-4 py-2.5 rounded-xl border border-charcoal-200 text-charcoal-700 font-medium hover:bg-charcoal-100 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={loading}
+              className={`flex-1 px-4 py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50 ${
+                confirmColor === 'red' 
+                  ? 'bg-red-500 text-white hover:bg-red-600' 
+                  : 'bg-split-500 text-white hover:bg-split-600'
+              }`}
+            >
+              {loading ? 'Please wait...' : confirmText}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -392,7 +436,7 @@ export default function SplitDetail() {
                   {split.status === 'full' ? 'Pay Now' : 'Payment opens when full'}
                 </button>
                 <button
-                  onClick={handleLeave}
+                  onClick={() => setShowLeaveModal(true)}
                   disabled={actionLoading}
                   className="btn-secondary w-full text-red-600 border-red-200 hover:bg-red-50"
                 >
@@ -408,7 +452,7 @@ export default function SplitDetail() {
                 </div>
                 {split.status === 'open' && (
                   <button 
-                    onClick={handleDelete}
+                    onClick={() => setShowDeleteModal(true)}
                     disabled={actionLoading}
                     className="btn-secondary w-full text-red-600 border-red-200 hover:bg-red-50"
                   >
@@ -451,6 +495,30 @@ export default function SplitDetail() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+        title="Delete this split?"
+        message="This will permanently delete this split and remove all participants. This action cannot be undone."
+        confirmText="Delete Split"
+        confirmColor="red"
+        loading={actionLoading}
+      />
+
+      {/* Leave Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showLeaveModal}
+        onClose={() => setShowLeaveModal(false)}
+        onConfirm={handleLeave}
+        title="Leave this split?"
+        message="You'll lose your spot and someone else may take it. You can rejoin later if spots are still available."
+        confirmText="Leave Split"
+        confirmColor="red"
+        loading={actionLoading}
+      />
     </div>
   );
 }
