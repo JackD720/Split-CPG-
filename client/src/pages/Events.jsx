@@ -217,12 +217,13 @@ export default function Events() {
                           <span className="text-sm font-medium text-split-600 uppercase">
                             {new Date(event.date).toLocaleDateString('en-US', { month: 'short' })}
                           </span>
-                          <span className="text-2xl font-bold text-split-700">
-                            {new Date(event.date).getDate()}
-                          </span>
-                          {event.endDate !== event.date && (
-                            <span className="text-xs text-split-500">
-                              - {new Date(event.endDate).getDate()}
+                          {event.endDate && event.endDate !== event.date ? (
+                            <span className="text-lg font-bold text-split-700">
+                              {new Date(event.date).getDate()}-{new Date(event.endDate).getDate()}
+                            </span>
+                          ) : (
+                            <span className="text-2xl font-bold text-split-700">
+                              {new Date(event.date).getDate()}
                             </span>
                           )}
                         </div>
