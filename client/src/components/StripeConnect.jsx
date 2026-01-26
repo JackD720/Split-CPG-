@@ -286,7 +286,7 @@ export default function StripeConnect() {
         )}
       </button>
 
-      {/* Check Status Button - show when onboarding incomplete */}
+      {/* Check Status Button - show when onboarding incomplete and has account */}
       {stripeStatus.hasAccount && !stripeStatus.onboarded && (
         <button
           onClick={async () => {
@@ -321,40 +321,6 @@ export default function StripeConnect() {
           ) : (
             'I\'ve Completed Onboarding - Check Status'
           )}
-        </button>
-      )}
-
-      {/* Fallback: Manual refresh button if something is wrong */}
-      {!stripeStatus.onboarded && (
-        <button
-          onClick={async () => {
-            setCheckingStatus(true);
-            setError(null);
-            try {
-              const response = await fetch(`${API_URL}/api/payments/connect/status/${company.id}`);
-              const data = await safeJsonParse(response);
-              
-              console.log('Stripe status check:', data);
-              
-              if (data?.onboarded) {
-                await updateCompany({ stripeOnboarded: true });
-                alert('Success! Your Stripe account is now connected.');
-              } else if (data?.hasAccount) {
-                setError(`Still incomplete. Charges: ${data?.chargesEnabled ? 'Yes' : 'No'}, Payouts: ${data?.payoutsEnabled ? 'Yes' : 'No'}`);
-              } else {
-                setError('No Stripe account found. Please click "Connect Stripe Account" first.');
-              }
-            } catch (err) {
-              console.error('Error:', err);
-              setError('Failed to check. See console for details.');
-            } finally {
-              setCheckingStatus(false);
-            }
-          }}
-          disabled={checkingStatus}
-          className="text-sm text-charcoal-500 hover:text-charcoal-700 mt-4 underline"
-        >
-          {checkingStatus ? 'Checking...' : 'Refresh Stripe Status'}
         </button>
       )}
 
