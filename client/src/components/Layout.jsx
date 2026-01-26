@@ -9,13 +9,15 @@ import {
   LogOut,
   Plus,
   Menu,
-  X
+  X,
+  MessageCircle
 } from 'lucide-react';
 import { useState } from 'react';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/splits', icon: Scissors, label: 'Splits' },
+  { to: '/messages', icon: MessageCircle, label: 'Messages' },
   { to: '/events', icon: Calendar, label: 'Events' },
   { to: '/companies', icon: Building2, label: 'Companies' },
   { to: '/settings', icon: Settings, label: 'Settings' },

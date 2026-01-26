@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/api';
@@ -14,8 +14,20 @@ import {
   DollarSign,
   ExternalLink,
   Check,
-  AlertCircle
+  AlertCircle,
+  MessageCircle,
+  Send
 } from 'lucide-react';
+import { 
+  collection, 
+  query, 
+  orderBy, 
+  onSnapshot,
+  addDoc,
+  serverTimestamp,
+  limit
+} from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 const typeIcons = {
   content: Camera,
@@ -55,6 +67,165 @@ function CompanyAvatar({ company, size = 'md' }) {
       <span className="text-split-600 font-semibold">
         {company?.name?.charAt(0) || '?'}
       </span>
+    </div>
+  );
+}
+
+// Chat component for split detail page
+function SplitChat({ splitId, company }) {
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    if (!splitId) return;
+
+    const messagesRef = collection(db, 'splits', splitId, 'messages');
+    const q = query(messagesRef, orderBy('timestamp', 'desc'), limit(50));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const msgs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })).reverse(); // Reverse to show oldest first
+      setMessages(msgs);
+      if (expanded) {
+        setTimeout(scrollToBottom, 100);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [splitId, expanded]);
+
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim() || sending) return;
+
+    setSending(true);
+    try {
+      const messagesRef = collection(db, 'splits', splitId, 'messages');
+      await addDoc(messagesRef, {
+        text: newMessage.trim(),
+        senderId: company.id,
+        senderName: company.name,
+        senderLogo: company.logoUrl || company.logo || null,
+        timestamp: serverTimestamp()
+      });
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const formatTime = (timestamp) => {
+    if (!timestamp?.toDate) return '';
+    return timestamp.toDate().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  };
+
+  return (
+    <div className="card p-6">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center justify-between w-full"
+      >
+        <div className="flex items-center gap-2">
+          <MessageCircle className="w-5 h-5 text-split-600" />
+          <h2 className="font-display text-lg text-charcoal-800">Chat</h2>
+          {messages.length > 0 && (
+            <span className="bg-split-100 text-split-600 text-xs px-2 py-0.5 rounded-full">
+              {messages.length}
+            </span>
+          )}
+        </div>
+        <span className="text-charcoal-400 text-sm">
+          {expanded ? 'Collapse' : 'Expand'}
+        </span>
+      </button>
+
+      {expanded && (
+        <div className="mt-4">
+          {/* Messages */}
+          <div className="h-64 overflow-y-auto border border-charcoal-100 rounded-lg p-3 space-y-3 bg-charcoal-50">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-charcoal-400">
+                <MessageCircle className="w-8 h-8 mb-2 opacity-50" />
+                <p className="text-sm">No messages yet</p>
+                <p className="text-xs">Start the conversation!</p>
+              </div>
+            ) : (
+              messages.map((msg) => {
+                const isOwn = msg.senderId === company?.id;
+                return (
+                  <div key={msg.id} className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : ''}`}>
+                    {!isOwn && (
+                      <div className="w-8 h-8 bg-split-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        {msg.senderLogo ? (
+                          <img src={msg.senderLogo} alt="" className="w-8 h-8 rounded-lg object-cover" />
+                        ) : (
+                          <span className="text-split-600 text-xs font-semibold">
+                            {msg.senderName?.charAt(0) || '?'}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div className={`max-w-[75%] ${isOwn ? 'items-end' : 'items-start'}`}>
+                      {!isOwn && (
+                        <p className="text-xs text-charcoal-500 mb-0.5 ml-1">{msg.senderName}</p>
+                      )}
+                      <div className={`rounded-xl px-3 py-2 ${
+                        isOwn 
+                          ? 'bg-split-500 text-white rounded-br-sm' 
+                          : 'bg-white text-charcoal-800 rounded-bl-sm border border-charcoal-100'
+                      }`}>
+                        <p className="text-sm">{msg.text}</p>
+                      </div>
+                      <p className={`text-xs text-charcoal-400 mt-0.5 ${isOwn ? 'text-right' : ''}`}>
+                        {formatTime(msg.timestamp)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input */}
+          <form onSubmit={handleSend} className="mt-3 flex gap-2">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Type a message..."
+              className="input flex-1 text-sm"
+              disabled={sending}
+            />
+            <button
+              type="submit"
+              disabled={!newMessage.trim() || sending}
+              className="btn-primary px-3 py-2"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </form>
+
+          {/* Link to full messages */}
+          <Link 
+            to={`/messages?split=${splitId}`}
+            className="block text-center text-sm text-split-600 hover:text-split-700 mt-3"
+          >
+            Open in full view →
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
@@ -505,6 +676,11 @@ export default function SplitDetail() {
               ))}
             </div>
           </div>
+
+          {/* Chat Section - Only show for participants */}
+          {isParticipant && (
+            <SplitChat splitId={split.id} company={company} />
+          )}
         </div>
 
         {/* Sidebar */}

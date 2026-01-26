@@ -10,6 +10,7 @@ import Events from './pages/Events';
 import Companies from './pages/Companies';
 import Settings from './pages/Settings';
 import Onboarding from './pages/Onboarding';
+import Messages from './pages/Messages';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -79,6 +80,7 @@ export default function App() {
         <Route path="/splits" element={<Splits />} />
         <Route path="/splits/new" element={<CreateSplit />} />
         <Route path="/splits/:id" element={<SplitDetail />} />
+        <Route path="/messages" element={<Messages />} />
         <Route path="/events" element={<Events />} />
         <Route path="/companies" element={<Companies />} />
         <Route path="/settings" element={<Settings />} />
