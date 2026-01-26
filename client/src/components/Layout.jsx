@@ -10,7 +10,8 @@ import {
   Plus,
   Menu,
   X,
-  MessageCircle
+  MessageCircle,
+  Gift
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -20,6 +21,7 @@ const navItems = [
   { to: '/messages', icon: MessageCircle, label: 'Messages' },
   { to: '/events', icon: Calendar, label: 'Events' },
   { to: '/companies', icon: Building2, label: 'Companies' },
+  { to: '/referrals', icon: Gift, label: 'Referrals' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 

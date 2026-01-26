@@ -16,7 +16,13 @@ import {
   Check,
   AlertCircle,
   MessageCircle,
-  Send
+  Send,
+  Share2,
+  Copy,
+  Mail,
+  Link as LinkIcon,
+  Twitter,
+  Linkedin
 } from 'lucide-react';
 import { 
   collection, 
@@ -67,6 +73,149 @@ function CompanyAvatar({ company, size = 'md' }) {
       <span className="text-split-600 font-semibold">
         {company?.name?.charAt(0) || '?'}
       </span>
+    </div>
+  );
+}
+
+// Share Split Card component
+function ShareSplitCard({ split }) {
+  const [copied, setCopied] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteSending, setInviteSending] = useState(false);
+  const [inviteSent, setInviteSent] = useState(false);
+
+  const shareUrl = `${window.location.origin}/splits/${split.id}`;
+  const shareText = `Join "${split.title}" on Split - Cost sharing for CPG brands. ${split.slotsAvailable || (split.slots - split.filledSlots)} spots left at $${split.costPerSlot}/spot.`;
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const shareTwitter = () => {
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+    window.open(url, '_blank', 'width=550,height=420');
+  };
+
+  const shareLinkedIn = () => {
+    const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
+    window.open(url, '_blank', 'width=550,height=420');
+  };
+
+  const shareEmail = () => {
+    const subject = encodeURIComponent(`Join my split: ${split.title}`);
+    const body = encodeURIComponent(`Hey!\n\nI'm organizing a cost-sharing split and thought you might be interested.\n\n${shareText}\n\nJoin here: ${shareUrl}`);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  };
+
+  const sendInvite = async (e) => {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+    
+    setInviteSending(true);
+    // For now, just open email client with pre-filled invite
+    // Later we can add a proper invite system with tracking
+    const subject = encodeURIComponent(`You're invited to join: ${split.title}`);
+    const body = encodeURIComponent(`Hi!\n\nYou've been invited to join a cost-sharing split on Split.\n\n${shareText}\n\nJoin here: ${shareUrl}\n\nSee you there!`);
+    window.location.href = `mailto:${inviteEmail}?subject=${subject}&body=${body}`;
+    
+    setInviteSending(false);
+    setInviteSent(true);
+    setInviteEmail('');
+    setTimeout(() => setInviteSent(false), 3000);
+  };
+
+  // Only show share if split is open
+  if (split.status !== 'open') return null;
+
+  return (
+    <div className="card p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Share2 className="w-5 h-5 text-split-600" />
+        <h3 className="font-display text-sm text-charcoal-800">Share this Split</h3>
+      </div>
+
+      {/* Copy Link */}
+      <div className="flex gap-2 mb-4">
+        <input
+          type="text"
+          value={shareUrl}
+          readOnly
+          className="input text-sm flex-1 bg-charcoal-50"
+        />
+        <button
+          onClick={copyLink}
+          className={`btn-secondary px-3 ${copied ? 'bg-green-50 border-green-200 text-green-600' : ''}`}
+        >
+          {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+        </button>
+      </div>
+
+      {/* Social Share Buttons */}
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={shareTwitter}
+          className="flex-1 btn-secondary py-2 text-sm hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600"
+        >
+          <Twitter className="w-4 h-4" />
+        </button>
+        <button
+          onClick={shareLinkedIn}
+          className="flex-1 btn-secondary py-2 text-sm hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600"
+        >
+          <Linkedin className="w-4 h-4" />
+        </button>
+        <button
+          onClick={shareEmail}
+          className="flex-1 btn-secondary py-2 text-sm hover:bg-split-50 hover:border-split-200 hover:text-split-600"
+        >
+          <Mail className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Invite by Email */}
+      <div className="border-t border-charcoal-100 pt-4">
+        <button
+          onClick={() => setShowInvite(!showInvite)}
+          className="text-sm text-split-600 hover:text-split-700 flex items-center gap-1"
+        >
+          <Mail className="w-4 h-4" />
+          {showInvite ? 'Hide invite form' : 'Invite someone directly'}
+        </button>
+
+        {showInvite && (
+          <form onSubmit={sendInvite} className="mt-3">
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="Enter email address"
+                className="input text-sm flex-1"
+                disabled={inviteSending}
+              />
+              <button
+                type="submit"
+                disabled={!inviteEmail.trim() || inviteSending}
+                className="btn-primary px-4 text-sm"
+              >
+                {inviteSending ? '...' : 'Send'}
+              </button>
+            </div>
+            {inviteSent && (
+              <p className="text-xs text-green-600 mt-2">
+                ✓ Opening email client with invite...
+              </p>
+            )}
+          </form>
+        )}
+      </div>
     </div>
   );
 }
@@ -773,6 +922,9 @@ export default function SplitDetail() {
               </div>
             </div>
           </div>
+
+          {/* Share Card */}
+          <ShareSplitCard split={split} />
         </div>
       </div>
 
