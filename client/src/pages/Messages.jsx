@@ -21,7 +21,7 @@ import {
   getDocs,
   limit
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../config/firebase';
 
 const typeIcons = {
   content: Camera,
